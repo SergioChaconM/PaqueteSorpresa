@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Horarios de Entrega</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+
+        /* 🔹 FONDO CON IMAGEN Y CAPA TRANSLÚCIDA */
+        body {
+            position: relative;
+            min-height: 100vh;
+            background-color: #f0f4f8;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            background-image: url("https://swwodfpirqvwliuiswup.supabase.co/storage/v1/object/public/Imagenes/entrega1.jpg");
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(1px);
+        }
+
+        /* 🔹 CONTENEDORES PRINCIPALES */
+        .cabecera, .contenedor-form, .contenedor-tabla {
+            background: rgba(255, 255, 255, 0.96);
+            padding: 1.8rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            margin-bottom: 1.5rem;
+        }
+        #app {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            width: 95%;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        /* 🔹 CABECERA — ESPACIO REDUCIDO ENTRE BOTÓN Y TÍTULO */
+        .cabecera { margin-bottom: 1.5rem; }
+        .encabezado-linea {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem; /* ✅ ESPACIO REDUCIDO entre botón y título */
+            margin-bottom: 1rem;
+        }
+        .encabezado-linea h2 {
+            color: #166534;
+            text-align: left; /* ✅ Alineado a la izquierda junto al botón */
+            margin: 0;
+        }
+        .btn-volver-cabecera {
+            background-color: #64748b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.6rem 1.4rem;
+            cursor: pointer;
+            font-size: 1rem;
+            white-space: nowrap;
+        }
+        .btn-volver-cabecera:hover { background-color: #475569; }
+
+        .nombre-empresa { color: #15803d; font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .loc-sucursal { color: #166534; font-size: 1rem; margin-bottom: 0.5rem; font-style: italic; }
+        .datos-fijos { display: flex; gap: 2rem; margin-top: 0.8rem; font-size: 1rem; color: #1e293b; font-weight: 500; flex-wrap: wrap; }
+        .aviso { color: #475569; font-size: 0.9rem; margin-top: 0.8rem; font-style: italic; }
+
+        /* 🔹 FORMULARIO — FONDO VERDE PÁLIDO */
+        .contenedor-form {
+            background: rgba(240, 253, 244, 0.98);
+            border: 1px solid #bbf7d0;
+        }
+        .contenedor-form h3 {
+            color: #166534;
+            margin-bottom: 1.4rem;
+            border-bottom: 2px solid #86efac;
+            padding-bottom: 0.5rem;
+        }
+
+        /* 🔹 CUADRÍCULA ADAPTABLE */
+        .fila {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .campo { display: flex; flex-direction: column; }
+        .campo.oculto { display: none !important; }
+        .campo label {
+            margin-bottom: 0.35rem;
+            color: #14532d;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        input, textarea {
+            padding: 0.65rem 0.8rem;
+            border: 1px solid #86efac;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            width: 100%;
+            background: #ffffff;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #22c55e;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+        }
+        input:disabled {
+            background: #f0fdf4;
+            color: #166534;
+            cursor: not-allowed;
+            font-weight: 500;
+        }
+        textarea { resize: vertical; min-height: 80px; }
+
+        /* 🔹 BOTONES */
+        .botones { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1.2rem; }
+        button {
+            padding: 0.7rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            min-width: 120px;
+        }
+        .btn-guardar { background-color: #22c55e; color: white; }
+        .btn-guardar:hover { background-color: #16a34a; }
+
+        /* 🔹 TABLA */
+        .contenedor-tabla h3 {
+            color: #166534;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+        table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.85rem; }
+        th, td { padding: 0.7rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #f8fafc; color: #166534; font-weight: bold; }
+        tbody tr:nth-child(odd) { background-color: #f0fdf4; }
+        tbody tr:nth-child(even) { background-color: #ffffff; }
+        tbody tr:hover { background-color: #dcfce7; }
+
+        /* 🔹 ALERTAS */
+        .alerta {
+            padding: 0.9rem 1.2rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: none;
+            font-weight: 500;
+        }
+        .exito { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .error { background-color: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="cabecera">
+            <!-- ✅ Botón Volver junto al título con espacio reducido -->
+            <div class="encabezado-linea">
+                <button type="button" class="btn-volver-cabecera" id="btnVolver">« Volver</button>
+                <h2>Registro de Horarios de Entrega</h2>
+            </div>
+
+            <div class="nombre-empresa" id="nombreEmpresa"></div>
+            <div class="loc-sucursal" id="locSucursal"></div>
+            <div class="datos-fijos">
+                <div><strong>NIT:</strong> <span id="mostrarNit"></span></div>
+                <div><strong>Sucursal:</strong> <span id="mostrarSucursal"></span></div>
+                <div><strong>Coordinador:</strong> <span id="coordinador"></span></div>
+            </div>
+            <p class="aviso">Estos datos no se pueden modificar durante la sesión</p>
+        </div>
+
+        <div class="alerta exito" id="alertaExito"></div>
+        <div class="alerta error" id="alertaError"></div>
+
+        <div class="contenedor-form">
+            <h3>Agregar Nuevo Horario</h3>
+            <form id="formMantenimiento">
+                <input type="hidden" id="nitOculto">
+                <input type="hidden" id="sucursalOculta">
+                <div class="fila">
+                    <div class="campo oculto">
+                        <label>NIT (fijo)</label>
+                        <input type="text" id="nitFijo" disabled>
+                    </div>
+                    <div class="campo oculto">
+                        <label>Sucursal (fijo)</label>
+                        <input type="number" id="sucursalFija" disabled>
+                    </div>
+                    <div class="campo oculto">
+                        <input type="number" id="grupo" required>
+                    </div>
+                </div>
+                <div class="fila">
+                    <div class="campo" style="grid-column: 1 / -1;">
+                        <label>Descripción de Entrega *</label>
+                        <textarea id="entrega" rows="3" placeholder="Ej: Lunes a Viernes 08:00 - 17:00" required></textarea>
+                    </div>
+                </div>
+                <div class="botones">
+                    <button type="submit" class="btn-guardar">Guardar Registro</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="contenedor-tabla">
+            <h3>Horarios Registrados</h3>
+            <table id="tablaHorarios">
+                <thead>
+                    <tr>
+                        <th>Descripción de Entrega</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTabla">
+                    <tr><td style="text-align:center; color:#475569;">Cargando registros...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+window.addEventListener('load', async () => {
+    if (typeof supabase === 'undefined') {
+        document.getElementById('cuerpoTabla').innerHTML = `<tr><td style="color:red;">Error: No se pudo cargar la librería de conexión.</td></tr>`;
+        return;
+    }
+    const SUPABASE_URL = 'https://swwodfpirqvwliuiswup.supabase.co';
+    const SUPABASE_KEY = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
+    
+    const clienteSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: { 
+            storage: localStorage, 
+            autoRefreshToken: true, 
+            persistSession: true, 
+            detectSessionInUrl: false 
+        }
+    });
+    const parametros = new URLSearchParams(window.location.search);
+    const nitCrudo = parametros.get('nit') || '';
+    const sucursalCrudo = parametros.get('sucursal') || '';
+    const nit = nitCrudo.trim();
+    const SUCURSAL = parseInt(sucursalCrudo.trim());
+    if (!nit || isNaN(SUCURSAL) || SUCURSAL <= 0) {
+        alert('Acceso no válido: debe ingresar NIT y Sucursal primero');
+        window.location.href = 'NITSucursal.html';
+        return;
+    }
+    document.getElementById('mostrarNit').textContent = nit;
+    document.getElementById('mostrarSucursal').textContent = SUCURSAL;
+    document.getElementById('nitFijo').value = nit;
+    document.getElementById('sucursalFija').value = SUCURSAL;
+    document.getElementById('nitOculto').value = nit;
+    document.getElementById('sucursalOculta').value = SUCURSAL;
+    let nombreComercial = '';
+    let nombreLegal = '';
+    let localizacionSucursal = '';
+    let registrosFiltrados = [];
+
+    function actualizarSiguienteGrupo() {
+        const siguienteGrupo = registrosFiltrados.length + 1;
+        document.getElementById('grupo').value = siguienteGrupo;
+    }
+
+    async function cargarDatosEmpresaYSucursal() {
+        try {
+            const { data: datosEmpresa, error: errorEmpresa } = await clienteSupabase
+                .from('Empresa')
+                .select(`"Nombre Legal", "Nombre Comercial"`)
+                .eq('NIT', nit)
+                .limit(1);
+            if (errorEmpresa) throw errorEmpresa;
+            if (datosEmpresa && datosEmpresa.length > 0) {
+                nombreLegal = datosEmpresa[0]["Nombre Legal"] || '';
+                nombreComercial = datosEmpresa[0]["Nombre Comercial"] || '';
+                document.getElementById('nombreEmpresa').textContent = nombreComercial 
+                    ? `🏢 ${nombreComercial}` 
+                    : `🏢 ${nombreLegal}`;
+            } else {
+                document.getElementById('nombreEmpresa').textContent = 'Empresa: No encontrada';
+            }
+            const { data: datosSucursal, error: errorSucursal } = await clienteSupabase
+                .from('Sucursal')
+                .select(`"Localización", "Contacto"`)
+                .eq('NIT', nit)
+                .eq('Sucursal', SUCURSAL)
+                .limit(1);
+            if (errorSucursal) throw errorSucursal;
+            if (datosSucursal && datosSucursal.length > 0) {
+                localizacionSucursal = datosSucursal[0]["Localización"] || '';
+                document.getElementById('locSucursal').textContent = localizacionSucursal 
+                    ? `📍 ${localizacionSucursal}` 
+                    : '';
+                document.getElementById('coordinador').textContent = datosSucursal[0]["Contacto"] || 'No especificado';
+            } else {
+                document.getElementById('locSucursal').textContent = '📍 Sucursal no encontrada';
+                document.getElementById('coordinador').textContent = 'No especificado';
+            }
+            document.title = `Horarios - ${nombreComercial || nombreLegal} | Sucursal ${SUCURSAL} - ${localizacionSucursal || 'Sin ubicación'}`;
+        } catch (err) {
+            console.error("Error cargando datos:", err);
+            document.getElementById('nombreEmpresa').textContent = `Error: ${err.message}`;
+        }
+    }
+
+    async function cargarHorarios() {
+        const cuerpo = document.getElementById('cuerpoTabla');
+        cuerpo.innerHTML = `<tr><td style="text-align:center; color:#475569;">Cargando...</td></tr>`;
+        try {
+            const { data, error } = await clienteSupabase
+                .from('HorarioEntrega')
+                .select('nit,sucursal,grupo,entrega');
+            if (error) throw error;
+            registrosFiltrados = data.filter(fila => 
+                String(fila.nit).trim() === String(nit).trim() && 
+                Number(fila.sucursal) === Number(SUCURSAL)
+            );
+            actualizarSiguienteGrupo();
+            if (!registrosFiltrados.length) {
+                cuerpo.innerHTML = `<tr><td style="text-align:center; color:#475569;">No hay horarios registrados para este NIT y sucursal</td></tr>`;
+                return;
+            }
+            cuerpo.innerHTML = '';
+            registrosFiltrados.forEach(item => {
+                cuerpo.innerHTML += `
+                    <tr>
+                        <td>${item.entrega || 'Sin descripción'}</td>
+                    </tr>
+                `;
+            });
+        } catch (err) {
+            cuerpo.innerHTML = `<tr><td style="color:red;">Error: ${err.message}</td></tr>`;
+            console.error("Detalle error:", err);
+        }
+    }
+
+    document.getElementById('formMantenimiento').addEventListener('submit', async e => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type=submit]');
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+        const grupo = parseInt(document.getElementById('grupo').value);
+        const entrega = document.getElementById('entrega').value.trim();
+        if (!grupo || !entrega) {
+            mostrarAlerta('Complete la descripción de entrega', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Guardar Registro';
+            return;
+        }
+        try {
+            const nuevo = { nit, sucursal: SUCURSAL, grupo: grupo, entrega: entrega };
+            const { error } = await clienteSupabase.from('HorarioEntrega').insert(nuevo);
+            if (error) {
+                if (error.code === '23505') throw new Error(`El Grupo ${grupo} ya existe para esta sucursal`);
+                throw error;
+            }
+            mostrarAlerta('✅ Guardado correctamente', 'exito');
+            e.target.reset();
+            document.getElementById('nitFijo').value = nit;
+            document.getElementById('sucursalFija').value = SUCURSAL;
+            document.getElementById('nitOculto').value = nit;
+            document.getElementById('sucursalOculta').value = SUCURSAL;
+            actualizarSiguienteGrupo();
+            await cargarHorarios();
+        } catch (err) {
+            mostrarAlerta(`❌ Error: ${err.message}`, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Guardar Registro';
+        }
+    });
+
+    document.getElementById('btnVolver').onclick = () => location.href = 'index.html';
+
+    function mostrarAlerta(mensaje, tipo) {
+        const alerta = document.getElementById(tipo === 'exito' ? 'alertaExito' : 'alertaError');
+        alerta.textContent = mensaje;
+        alerta.style.display = 'block';
+        setTimeout(() => alerta.style.display = 'none', 4000);
+    }
+
+    await cargarDatosEmpresaYSucursal();
+    await cargarHorarios();
+});
+    </script>
+</body>
+</html>

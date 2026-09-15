@@ -1,0 +1,29 @@
+# 🔒 CLAVES Y SECRETOS — NUNCA SUBIR A GITHUB
+.env
+.env.local
+.env.*
+!.env.example
+
+# 🐍 Archivos temporales de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 📦 Entorno virtual
+venv/
+.venv/
+env/
+.env/
+
+# ⚙️ Configuración de tu editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 📋 Archivos de sistema y logs
+.DS_Store
+Thumbs.db
+*.log
+pip-log.txt

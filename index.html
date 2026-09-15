@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Paquetes Oferton - Menú Principal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-color: #f0f4f8;
+            position: relative;
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        /* 🖼️ Contenedor de imágenes visibles */
+        .imagen-fondo {
+            position: fixed;
+            z-index: 1;
+            border-radius: 16px;
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transform: scale(0.7) rotate(0deg);
+            transition: all 1.2s ease-in-out;
+            pointer-events: none;
+        }
+        /* ✨ Entrada suave */
+        .imagen-fondo.activa {
+            opacity: 1;
+            transform: scale(1) rotate(var(--rotacion, 0deg));
+        }
+        /* ⚡ Salida suave */
+        .imagen-fondo.saliendo {
+            opacity: 0;
+            transform: scale(0.5) translateY(-50px) rotate(0deg);
+        }
+        /* 📋 Menú siempre al frente */
+        .contenedor {
+            position: relative;
+            z-index: 10;
+            background-color: rgba(255, 255, 255, 0.97);
+            padding: 2.5rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            width: 100%;
+            max-width: 580px;
+            text-align: center;
+        }
+        h1 { color: #2c3e50; margin-bottom: 0.5rem; font-size: 1.8rem; }
+        .subtitulo { color: #7f8c8d; margin-bottom: 2rem; font-size: 1rem; }
+        .boton-opcion {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            margin: 0.8rem 0;
+            background: #27ae60;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+        .boton-opcion:hover { background: #219653; transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+    <!-- 🖼️ Aquí se generarán las imágenes dinámicamente -->
+    <div id="contenedorImagenes"></div>
+    <div class="contenedor">
+        <h1>🍽️ Sabores Auténticos</h1>
+        <p class="subtitulo">Elige la sección que deseas visitar</p>
+        <a href="MantenimientoEmpresa.html" class="boton-opcion">📋 Control de Empresas</a>
+        <a href="NIT.html" class="boton-opcion">📍 Control Sucursales</a>
+        <a href="NITSucursal.html" class="boton-opcion">⏰ Organización de Horarios</a>
+        <a href="NITSucursalPaquete.html" class="boton-opcion">🎁 Paquetones Sorpresa</a>
+        <a href="MantenimientoAlimentos.html" class="boton-opcion">🥗 Clasificación de Productos</a>
+        <!-- ✅ NUEVO BOTÓN AGREGADO -->
+        <a href="SucursalesConPaquetesAnteriores.html" class="boton-opcion">📦 Paquetes Anteriores al Día de Hoy</a>
+    </div>
+    <script>
+        // ✅ Configuración Supabase intacta
+        const BASE_URL = "https://swwodfpirqvwliuiswup.supabase.co/storage/v1/object/public/Imagenes/";
+        
+        const imagenes = [
+            "asados.jpg", "bebidas.jpg", "cocina1.jpg", "cocina2.jpg", "cocina3.jpg",
+            "cocinasiaatica.jpg", "default.jpg", "ensalada.jpg", "entrega1.jpg",
+            "fruta.jpg", "hamburguesa.jpg", "hotdog.jpg", "kioskos.jpg",
+            "mariscos.jpg", "panaderia.jpg", "pasta.jpg", "Pavo.jpg",
+            "pizza.jpg", "pollo.jpg", "reposteria.jpg", "sandwich.jpg",
+            "taco.jpg", "verdura.jpg"
+        ];
+        // ⏱️ Configuración
+        const TIEMPO_CAMBIO = 5000; // 5 segundos entre cambios
+        const MAX_VISIBLES = 3;      // Máximo 3 imágenes a la vez
+        const contenedor = document.getElementById("contenedorImagenes");
+        let listaPendientes = [];
+        let colaVisibles = []; // Controla el orden: [más antigua, ..., más reciente]
+        // 🎲 Barajar lista aleatoriamente
+        function barajarLista(arr) {
+            const nueva = [...arr];
+            for (let i = nueva.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [nueva[i], nueva[j]] = [nueva[j], nueva[i]];
+            }
+            return nueva;
+        }
+        // 📐 Generar estilos aleatorios únicos
+        function generarEstilosAleatorios() {
+            const ancho = 35 + Math.random() * 35;
+            const alto = ancho * (0.55 + Math.random() * 0.5);
+            const maxX = 100 - ancho;
+            const maxY = 100 - (alto * 0.7);
+            const posX = Math.random() * maxX;
+            const posY = Math.random() * maxY;
+            const rotacion = (Math.random() - 0.5) * 24;
+            const sombraX = 5 + Math.random() * 15;
+            const sombraY = 8 + Math.random() * 20;
+            const sombraBlur = 15 + Math.random() * 30;
+            const sombraOpacidad = 0.18 + Math.random() * 0.22;
+            const sombra = `0 ${sombraY.toFixed(0)}px ${sombraBlur.toFixed(0)}px rgba(0,0,0,${sombraOpacidad.toFixed(2)}), ${sombraX.toFixed(0)}px ${sombraY.toFixed(0)}px ${(sombraBlur * 1.5).toFixed(0)}px rgba(0,0,0,${(sombraOpacidad * 0.5).toFixed(2)})`;
+            const bordeRedondo = 12 + Math.random() * 16;
+            return { ancho, alto, posX, posY, rotacion, sombra, bordeRedondo };
+        }
+        // 🖼️ Crear elemento imagen con todos sus estilos
+        function crearImagenElemento(nombreImg, estilos) {
+            const img = document.createElement("div");
+            img.className = "imagen-fondo";
+            img.style.width = estilos.ancho + "vw";
+            img.style.height = estilos.alto + "vh";
+            img.style.left = estilos.posX + "vw";
+            img.style.top = estilos.posY + "vh";
+            img.style.setProperty("--rotacion", estilos.rotacion.toFixed(1) + "deg");
+            img.style.boxShadow = estilos.sombra;
+            img.style.borderRadius = estilos.bordeRedondo + "px";
+            img.style.backgroundImage = `url('${BASE_URL}${nombreImg}')`;
+            img.dataset.nombre = nombreImg;
+            return img;
+        }
+        // 🔄 Lógica principal: entra nueva → si hay 3, sale la más antigua
+        function agregarNuevaImagen() {
+            if (listaPendientes.length === 0) {
+                listaPendientes = barajarLista(imagenes);
+            }
+            const nuevaImg = listaPendientes.pop();
+            const estilos = generarEstilosAleatorios();
+            const elemento = crearImagenElemento(nuevaImg, estilos);
+            // 📤 Si ya hay 3 visibles: despedir la más antigua
+            if (colaVisibles.length >= MAX_VISIBLES) {
+                const masAntigua = colaVisibles.shift();
+                masAntigua.classList.remove("activa");
+                masAntigua.classList.add("saliendo");
+                // Eliminar del DOM tras la animación de salida
+                setTimeout(() => masAntigua.remove(), 1200);
+                console.log(`➡️ Retirada: ${masAntigua.dataset.nombre}`);
+            }
+            // 📥 Agregar la nueva
+            contenedor.appendChild(elemento);
+            colaVisibles.push(elemento);
+            // ✨ Activar con animación de entrada
+            setTimeout(() => elemento.classList.add("activa"), 50);
+            console.log(`✅ Entrada: ${nuevaImg} | Activas: ${colaVisibles.length}`);
+        }
+        // 🚀 Iniciar todo
+        window.onload = () => {
+            listaPendientes = barajarLista(imagenes);
+            // Mostrar las primeras 3 inmediatamente
+            for (let i = 0; i < MAX_VISIBLES; i++) {
+                agregarNuevaImagen();
+            }
+            // Luego ir cambiando cada cierto tiempo
+            setInterval(agregarNuevaImagen, TIEMPO_CAMBIO);
+        };
+    </script>
+</body>
+</html>

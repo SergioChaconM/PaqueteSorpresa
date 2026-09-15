@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar Nuevo Paquete Oferton</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+
+        /* 🔹 FONDO CON IMAGEN Y CAPA TRANSLÚCIDA — ESTILO UNIFORME */
+        body {
+            position: relative;
+            min-height: 100vh;
+            background-color: #f0f4f8;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            background-image: url('https://images.unsplash.com/photo-1556740738-b6a63e27c4df?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(1px);
+        }
+
+        /* 🔹 CONTENEDOR PRINCIPAL */
+        #app {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            width: 95%;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        /* 🔹 ENCABEZADO CON BOTÓN VOLVER JUNTO AL TÍTULO */
+        .encabezado-linea {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .btn-volver-cabecera {
+            background-color: #64748b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.6rem 1.4rem;
+            cursor: pointer;
+            font-size: 1rem;
+            white-space: nowrap;
+        }
+        .btn-volver-cabecera:hover { background-color: #475569; }
+        .encabezado-linea h2 {
+            color: #166534;
+            margin: 0;
+            font-size: 1.35rem;
+        }
+
+        /* 🔹 FORMULARIO — FONDO VERDE PÁLIDO */
+        .contenedor-form {
+            background: rgba(240, 253, 244, 0.98);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border: 1px solid #bbf7d0;
+            margin-bottom: 1.5rem;
+        }
+
+        /* 🔹 CUADRÍCULA REORGANIZADA: 2 COLUMNAS */
+        .fila {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem 1.8rem;
+            margin-bottom: 1rem;
+        }
+        .campo {
+            display: flex;
+            flex-direction: column;
+        }
+        .campo.ancho-completo {
+            grid-column: 1 / -1;
+        }
+        .campo.oculto { display: none !important; }
+        label {
+            margin-bottom: 0.35rem;
+            color: #14532d;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        input, select, textarea {
+            padding: 0.65rem 0.8rem;
+            border: 1px solid #86efac;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            width: 100%;
+            background: #ffffff;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #22c55e;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+        }
+        input[readonly] {
+            background: #f0fdf4;
+            color: #166534;
+            cursor: not-allowed;
+            font-weight: 500;
+        }
+        textarea { resize: vertical; min-height: 80px; }
+        .info {
+            font-size: 0.8rem;
+            color: #15803d;
+            margin-top: 0.25rem;
+            font-style: italic;
+        }
+
+        /* 🔹 BOTONES */
+        .contenedor-botones {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #bbf7d0;
+        }
+        button {
+            padding: 0.7rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            min-width: 120px;
+        }
+        .btn-guardar { background-color: #22c55e; color: white; }
+        .btn-guardar:hover { background-color: #16a34a; }
+        .btn-limpiar { background-color: #f59e0b; color: white; }
+        .btn-limpiar:hover { background-color: #d97706; }
+
+        /* 🔹 MENSAJES */
+        #mensaje {
+            margin-top: 1.2rem;
+            padding: 0.9rem 1.2rem;
+            border-radius: 6px;
+            display: none;
+            font-weight: 500;
+        }
+        .exito { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .error { background-color: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+
+        /* 🔹 TABLA DE REGISTROS */
+        .tabla-registros {
+            background: rgba(255, 255, 255, 0.96);
+            padding: 1.8rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        .tabla-registros h3 {
+            color: #166534;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 0.7rem;
+            text-align: left;
+            vertical-align: middle;
+        }
+        th { background: #f8fafc; color: #166534; font-weight: bold; }
+        tbody tr:nth-child(even) { background-color: #f0fdf4; }
+        tbody tr:nth-child(odd) { background-color: #ffffff; }
+        tbody tr:hover { background-color: #dcfce7; }
+        .estado-D { color: #166534; font-weight: bold; }
+        .estado-R { color: #ca8a04; font-weight: bold; }
+        .estado-P { color: #2563eb; font-weight: bold; }
+        .estado-A { color: #dc2626; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <!-- ✅ Botón Volver junto al título -->
+    <div class="encabezado-linea">
+        <button type="button" class="btn-volver-cabecera" onclick="volverAtras()">« Volver</button>
+        <h2 id="tituloPagina">Registrar Nuevo Paquete Oferton</h2>
+    </div>
+
+    <div class="contenedor-form">
+        <!-- Campos ocultos -->
+        <div class="campo oculto">
+            <label>NIT *:</label>
+            <input type="text" id="nit" readonly>
+        </div>
+        <div class="campo oculto">
+            <label>Sucursal *:</label>
+            <input type="number" id="sucursal" readonly>
+        </div>
+
+        <!-- ✅ FILA 1: ID Paquete + Productos -->
+        <div class="fila">
+            <div class="campo">
+                <label>ID Paquete *:</label>
+                <input type="number" id="id_paquete" readonly>
+            </div>
+            <div class="campo">
+                <label>Productos *:</label>
+                <input type="text" id="productos" required placeholder="Descripción de los productos...">
+            </div>
+        </div>
+
+        <!-- ✅ FILA 2: Precio Normal + Precio Oferton -->
+        <div class="fila">
+            <div class="campo">
+                <label>Precio Normal (Q) *:</label>
+                <input type="number" step="0.01" id="precio_normal" required placeholder="0.00">
+            </div>
+            <div class="campo">
+                <label>Precio Oferton (Q) *:</label>
+                <input type="number" step="0.01" id="precio_oferton" required placeholder="0.00">
+            </div>
+        </div>
+
+        <!-- ✅ FILA 3: Día Promoción + Cantidad Disponible -->
+        <div class="fila">
+            <div class="campo">
+                <label>Día de Promoción:</label>
+                <input type="date" id="dia_promocion">
+                <div class="info">Solo hoy o hasta 6 días adelante</div>
+            </div>
+            <div class="campo">
+                <label>Cantidad Disponible:</label>
+                <input type="number" min="1" id="disponible" value="1">
+                <div class="info">Valor por defecto: 1</div>
+            </div>
+        </div>
+
+        <!-- ✅ FILA 4: Grupo/Horario + Tipo de Alimento -->
+        <div class="fila">
+            <div class="campo">
+                <label>Grupo / Horario *:</label>
+                <select id="grupo" required>
+                    <option value="">-- Seleccione un horario --</option>
+                </select>
+                <div class="info">Horarios disponibles según sucursal</div>
+            </div>
+            <div class="campo">
+                <label>Tipo de Alimento *:</label>
+                <select id="alimento_secuencia" required>
+                    <option value="">-- Seleccione variedad --</option>
+                </select>
+                <div class="info">Alimentos disponibles para esta empresa</div>
+            </div>
+        </div>
+
+        <!-- ✅ FILA 5: Detalle / Observaciones — Ancho completo -->
+        <div class="fila">
+            <div class="campo ancho-completo">
+                <label>Detalle / Observaciones:</label>
+                <textarea id="detalle" placeholder="Información adicional, observaciones..."></textarea>
+                <div class="info">Puedes usar "Enter" para saltos de línea</div>
+            </div>
+        </div>
+
+        <!-- ✅ Campo Estado (solo lectura, visual) -->
+        <div class="fila">
+            <div class="campo">
+                <label>Estado:</label>
+                <input type="text" value="Disponible (D)" readonly>
+                <div class="info">Valor asignado automáticamente</div>
+            </div>
+            <div></div> <!-- Espacio para mantener alineación -->
+        </div>
+
+        <!-- ✅ Botones -->
+        <div class="contenedor-botones">
+            <button id="btnGuardar" class="btn-guardar" onclick="guardarRegistro()">Guardar Paquete</button>
+            <button class="btn-limpiar" onclick="limpiarTodo()">Limpiar</button>
+        </div>
+
+        <!-- Mensajes -->
+        <div id="mensaje"></div>
+    </div>
+
+    <!-- ✅ Tabla de paquetes registrados -->
+    <div class="tabla-registros">
+        <h3>📋 Paquetes Registrados para esta Empresa y Sucursal</h3>
+        <div id="listadoPaquetes">Cargando registros...</div>
+    </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://swwodfpirqvwliuiswup.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
+const CREDENCIALES = {
+    usuario: "srchaconm@gmail.com",
+    clave: "ContraseñaSegura1"
+};
+const { createClient } = supabase;
+const clienteSupabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { storage: localStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
+});
+
+let nitFijo = '';
+let sucursalFija = 0;
+let siguienteId = 1;
+let fechaMinima = '';
+let fechaMaxima = '';
+
+function formatearFechaISO(fecha) {
+    const anio = fecha.getFullYear();
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    return `${anio}-${mes}-${dia}`;
+}
+
+function inicializarRangoFechas() {
+    const hoy = new Date();
+    const max = new Date();
+    max.setDate(hoy.getDate() + 6);
+    fechaMinima = formatearFechaISO(hoy);
+    fechaMaxima = formatearFechaISO(max);
+    const campoFecha = document.getElementById('dia_promocion');
+    campoFecha.min = fechaMinima;
+    campoFecha.max = fechaMaxima;
+}
+
+async function cargarHorariosEntrega() {
+    try {
+        const { data, error } = await clienteSupabase
+            .schema('public')
+            .from("HorarioEntrega")
+            .select('nit, sucursal, grupo, entrega')
+            .eq('nit', nitFijo)
+            .eq('sucursal', sucursalFija)
+            .order('grupo', { ascending: true });
+        if (error) throw error;
+        const selectGrupo = document.getElementById('grupo');
+        selectGrupo.innerHTML = '<option value="">-- Seleccione un horario --</option>';
+        if (data && data.length > 0) {
+            data.forEach(fila => {
+                const opcion = document.createElement('option');
+                opcion.value = fila.grupo;
+                opcion.textContent = fila.entrega;
+                selectGrupo.appendChild(opcion);
+            });
+        }
+    } catch (err) {
+        console.error("❌ Error cargando horarios:", err.message);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+    const params = new URLSearchParams(window.location.search);
+    const valorNit = params.get('nit');
+    const valorSuc = params.get('sucursal');
+    
+    if (!valorNit || !valorSuc) {
+        document.getElementById('listadoPaquetes').innerHTML = '<p class="error">No se puede cargar sin los parámetros.</p>';
+        return;
+    }
+    
+    nitFijo = valorNit.trim();
+    sucursalFija = parseInt(valorSuc.trim());
+    document.getElementById('nit').value = nitFijo;
+    document.getElementById('sucursal').value = sucursalFija;
+    
+    inicializarRangoFechas();
+    await cargarLocalizacionYActualizarTitulo();
+    await iniciarSesionYCargarTodo();
+    await cargarHorariosEntrega();
+    await cargarAlimentosPorEmpresa();
+});
+
+async function cargarLocalizacionYActualizarTitulo() {
+    try {
+        const { data, error } = await clienteSupabase
+            .schema('public')
+            .from("Sucursal")
+            .select('"NIT", "Sucursal", "Localización"')
+            .eq('"NIT"', nitFijo)
+            .eq('"Sucursal"', sucursalFija)
+            .limit(1);
+        if (error) throw error;
+        let localizacionTexto = '';
+        if (data && data.length > 0) {
+            localizacionTexto = data[0]["Localización"] || '';
+        }
+        const titulo = document.getElementById('tituloPagina');
+        titulo.textContent = localizacionTexto 
+            ? `Registrar Nuevo Paquete Oferton — ${localizacionTexto}`
+            : `Registrar Nuevo Paquete Oferton — Sucursal ${sucursalFija}`;
+    } catch (err) {
+        document.getElementById('tituloPagina').textContent = 
+            `Registrar Nuevo Paquete Oferton — Sucursal ${sucursalFija}`;
+    }
+}
+
+async function iniciarSesionYCargarTodo() {
+    try {
+        const { data: { session } } = await clienteSupabase.auth.getSession();
+        if (!session) {
+            const { error } = await clienteSupabase.auth.signInWithPassword({
+                email: CREDENCIALES.usuario,
+                password: CREDENCIALES.clave
+            });
+            if (error) throw error;
+        }
+
+        const { data: maxIdData, error: maxIdError } = await clienteSupabase
+            .schema('public')
+            .from("PaqueteOferton")
+            .select('"IDPaquete"')
+            .eq('"NIT"', nitFijo)
+            .eq('"Sucursal"', sucursalFija)
+            .order('"IDPaquete"', { ascending: false })
+            .limit(1);
+        if (maxIdError) throw maxIdError;
+        
+        siguienteId = (maxIdData && maxIdData.length > 0 && maxIdData[0].IDPaquete)
+            ? maxIdData[0].IDPaquete + 1
+            : 1;
+        document.getElementById('id_paquete').value = siguienteId;
+
+        const { data, error } = await clienteSupabase
+            .schema('public')
+            .from("PaqueteOferton")
+            .select('"IDPaquete", "Productos", "PrecioNormal", "PrecioOferton", "DiaPromoción", "Estado", "disponible"')
+            .eq('"NIT"', nitFijo)
+            .eq('"Sucursal"', sucursalFija)
+            .order('"IDPaquete"', { ascending: true });
+        if (error) throw error;
+
+        const contenedor = document.getElementById('listadoPaquetes');
+        if (!data || data.length === 0) {
+            contenedor.innerHTML = '<p style="color:#15803d;">ℹ️ No hay paquetes registrados aún para esta sucursal.</p>';
+        } else {
+            let html = `<table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Productos</th>
+                        <th>Precio Normal</th>
+                        <th>Precio Oferton</th>
+                        <th>Día Promoción</th>
+                        <th>Cantidad Disponible</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            data.forEach(p => {
+                const est = {D:'Disponible',R:'Reservado',P:'Pagado',A:'Anulado'}[p.Estado] || p.Estado;
+                html += `<tr>
+                    <td>${p.IDPaquete}</td>
+                    <td>${p.Productos}</td>
+                    <td>Q${p.PrecioNormal?.toFixed(2) || '0.00'}</td>
+                    <td>Q${p.PrecioOferton?.toFixed(2) || '0.00'}</td>
+                    <td>${p.DiaPromoción || '—'}</td>
+                    <td><strong>${p.disponible}</strong></td>
+                    <td class="estado-${p.Estado}">${est}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+            contenedor.innerHTML = html;
+        }
+    } catch (err) {
+        document.getElementById('listadoPaquetes').innerHTML = `<p class="error">Error: ${err.message}</p>`;
+        mostrarMensaje("Error: " + err.message, "error");
+    }
+}
+
+async function cargarAlimentosPorEmpresa() {
+    try {
+        const { data: registrosEmpresa, error: errorEmpresa } = await clienteSupabase
+            .from("empresalimento")
+            .select('secuencia')
+            .eq('nit', nitFijo)
+            .order('secuencia', { ascending: true });
+        if (errorEmpresa) throw errorEmpresa;
+
+        const selectAlimento = document.getElementById('alimento_secuencia');
+        selectAlimento.innerHTML = '<option value="">-- Seleccione variedad --</option>';
+        
+        if (!registrosEmpresa || registrosEmpresa.length === 0) {
+            console.log("ℹ️ No hay registros en empresalimento para este NIT:", nitFijo);
+            return;
+        }
+
+        const listaSecuencias = registrosEmpresa.map(r => r.secuencia);
+        const { data: datosAlimento, error: errorAlimento } = await clienteSupabase
+            .from("alimento")
+            .select('secuencia, variedad')
+            .in('secuencia', listaSecuencias);
+        if (errorAlimento) throw errorAlimento;
+
+        registrosEmpresa.forEach(fila => {
+            const alimento = datosAlimento?.find(a => a.secuencia === fila.secuencia);
+            const opcion = document.createElement('option');
+            opcion.value = fila.secuencia;
+            opcion.textContent = `${fila.secuencia} — ${alimento?.variedad || 'Sin nombre'}`;
+            selectAlimento.appendChild(opcion);
+        });
+    } catch (err) {
+        console.error("❌ Error cargando alimentos:", err.message);
+        alert("Error: " + err.message);
+    }
+}
+
+async function guardarRegistro() {
+    const btn = document.getElementById('btnGuardar');
+    const mensaje = document.getElementById('mensaje');
+    mensaje.style.display = 'none';
+
+    const prod = document.getElementById('productos').value.trim();
+    const pNorm = parseFloat(document.getElementById('precio_normal').value);
+    const pOfer = parseFloat(document.getElementById('precio_oferton').value);
+    const valorGrupo = document.getElementById('grupo').value;
+    const fechaSeleccionada = document.getElementById('dia_promocion').value;
+    const detalleTexto = document.getElementById('detalle').value;
+    const valorAlimento = document.getElementById('alimento_secuencia').value;
+    const valorDisponible = parseInt(document.getElementById('disponible').value);
+
+    if (!nitFijo || !sucursalFija || !siguienteId || !prod || !pNorm || !pOfer) {
+        mostrarMensaje("⚠️ Completa todos los campos obligatorios", "error");
+        return;
+    }
+    if (pNorm <= pOfer) {
+        mostrarMensaje("⚠️ El Precio del Paquete Oferton debe ser menor que el Precio Normal.", "error");
+        return;
+    }
+    if (!valorGrupo) {
+        mostrarMensaje("⚠️ Debes seleccionar un horario de entrega.", "error");
+        return;
+    }
+    if (!valorAlimento) {
+        mostrarMensaje("⚠️ Debes seleccionar un tipo de alimento.", "error");
+        return;
+    }
+    if (isNaN(valorDisponible) || valorDisponible < 1) {
+        mostrarMensaje("⚠️ La cantidad disponible debe ser al menos 1.", "error");
+        return;
+    }
+    if (fechaSeleccionada) {
+        if (fechaSeleccionada < fechaMinima || fechaSeleccionada > fechaMaxima) {
+            mostrarMensaje(`⚠️ La fecha debe estar entre hoy (${fechaMinima}) y ${fechaMaxima}`, "error");
+            return;
+        }
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Guardando...";
+
+    try {
+        const datosInsert = {
+            "NIT": nitFijo,
+            "Sucursal": sucursalFija,
+            "IDPaquete": siguienteId,
+            "secuencia": parseInt(valorAlimento),
+            "Productos": prod,
+            "PrecioNormal": pNorm,
+            "PrecioOferton": pOfer,
+            "Estado": "D",
+            "Grupo": parseInt(valorGrupo),
+            "disponible": valorDisponible,
+            detalle: detalleTexto || null
+        };
+        if (fechaSeleccionada) {
+            datosInsert["DiaPromoción"] = fechaSeleccionada;
+        }
+
+        const { error } = await clienteSupabase
+            .from("PaqueteOferton")
+            .insert(datosInsert);
+        if (error) throw error;
+
+        mostrarMensaje(`✅ Paquete: ${siguienteId} - Registrado exitosamente`, "exito");
+        setTimeout(() => { limpiarTodo(); }, 500);
+        await iniciarSesionYCargarTodo();
+    } catch (err) {
+        console.error("❌ Error guardando:", err);
+        mostrarMensaje("❌ Error: " + err.message, "error");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Guardar Paquete";
+    }
+}
+
+function volverAtras() {
+    location.href = 'index.html';
+}
+
+function mostrarMensaje(texto, tipo) {
+    const m = document.getElementById('mensaje');
+    m.textContent = texto;
+    m.className = tipo;
+    m.style.display = 'block';
+}
+
+function limpiarTodo() {
+    document.querySelectorAll('input, select, textarea').forEach(el => {
+        if(el.id !== 'nit' && el.id !== 'sucursal' && el.id !== 'id_paquete' && el.id !== 'disponible') el.value = '';
+    });
+    document.getElementById('disponible').value = '1';
+    document.getElementById('mensaje').style.display = 'none';
+}
+</script>
+</body>
+</html>
