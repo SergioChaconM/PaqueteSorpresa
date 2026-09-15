@@ -20,7 +20,6 @@
             margin-right: auto;
         }
         .formulario-edicion h3 { margin-bottom: 1.4rem; color: #166534; text-align: center; }
-
         /* 🔹 Cuadrícula: 2 columnas en pantallas grandes, 1 en pequeñas */
         .grid-campos {
             display: grid;
@@ -28,7 +27,6 @@
             gap: 0.8rem 1.5rem;
             align-items: center;
         }
-
         /* 🔹 Grupo de campo: etiqueta + entrada */
         .grupo-campo {
             display: flex;
@@ -39,7 +37,6 @@
             color: #14532d;
             margin-bottom: 0.25rem;
         }
-
         /* 🔹 Anchos calculados según contenido */
         input, select {
             padding: 0.65rem 0.8rem;
@@ -56,12 +53,10 @@
             box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
         }
         input:disabled { background: #f0fdf4; color: #166534; cursor: not-allowed; }
-
         /* 🔹 Campos que ocupan AMBAS columnas */
         .campo-ancho {
             grid-column: 1 / -1;
         }
-
         /* 🔹 Checkbox personalizado */
         .contenedor-checkbox {
             display: flex;
@@ -74,7 +69,6 @@
             transform: scale(1.2);
             margin: 0;
         }
-
         /* 🔹 Botones del formulario */
         .contenedor-botones {
             display: flex;
@@ -96,7 +90,6 @@
         button:disabled { background: #86efac; cursor: not-allowed; opacity: 0.7; }
         button.volver { background: #64748b; }
         button.volver:hover { background: #475569; }
-
         /* 🔹 Estilos generales de página */
         button.eliminar { background: #dc2626; padding: 0.5rem 1rem; }
         button.eliminar:hover { background: #b91c1c; }
@@ -107,12 +100,10 @@
         button.quitar { background: #ef4444; padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 4px; }
         button.quitar:hover { background: #dc2626; }
         .boton-nuevo { margin: 1rem 0; width: auto; }
-
         table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
         th, td { border: 1px solid #ddd; padding: 0.6rem; text-align: left; font-size: 0.82rem; }
         th { background: #f3f4f6; color: #1e293b; font-weight: bold; }
         .acciones { width: 120px; text-align: center; }
-
         .seccion-alimentos {
             background: rgba(240, 253, 244, 0.98);
             padding: 1.5rem;
@@ -146,7 +137,6 @@
         .exito { color: #166534; margin: 1rem 0; font-weight: bold; }
         .info { color: #15803d; margin: 0.5rem 0; font-size: 0.9rem; }
         .sin-registros { color: #166534; font-style: italic; text-align: center; padding: 1.5rem; }
-
         body {
             margin: 0;
             padding: 0;
@@ -231,7 +221,6 @@
                         <label for="empresaRegistro">Fecha de Registro</label>
                         <input type="date" id="empresaRegistro" required disabled>
                     </div>
-
                     <!-- Fila 2: Nombres (ancho completo) -->
                     <div class="grupo-campo campo-ancho">
                         <label for="empresaNombreLegal">Nombre Legal *</label>
@@ -241,7 +230,6 @@
                         <label for="empresaNombreComercial">Nombre Comercial</label>
                         <input type="text" id="empresaNombreComercial" placeholder="Nombre comercial o marca">
                     </div>
-
                     <!-- Fila 3: Contacto + Correo -->
                     <div class="grupo-campo">
                         <label for="empresaContacto">Contacto Principal</label>
@@ -251,7 +239,6 @@
                         <label for="correoRepresentante">Correo del Representante *</label>
                         <input type="email" id="correoRepresentante" placeholder="correo@ejemplo.com" required>
                     </div>
-
                     <!-- Fila 4: Banco + Tipo de Cuenta -->
                     <div class="grupo-campo">
                         <label for="banco">Nombre del Banco *</label>
@@ -265,34 +252,29 @@
                             <option value="Ahorra">Cuenta de Ahorros</option>
                         </select>
                     </div>
-
                     <!-- Fila 5: Número de Cuenta (AHORA OBLIGATORIO) -->
                     <div class="grupo-campo">
                         <label for="numeroCuenta">Número de Cuenta (máx. 20) *</label>
                         <input type="text" id="numeroCuenta" placeholder="000-000000-0" maxlength="20" required>
                     </div>
-
                     <!-- Checkbox: Vigente -->
                     <div class="contenedor-checkbox">
                         <input type="checkbox" id="empresaVigente" checked disabled>
                         <label for="empresaVigente">✅ Empresa Vigente</label>
                     </div>
                 </div>
-
                 <!-- Botones -->
                 <div class="contenedor-botones">
                     <button id="btnGuardar" onclick="guardarEmpresa()">Guardar</button>
                     <button class="volver" onclick="cancelarFormulario()">Cancelar</button>
                 </div>
             </div>
-
             <button id="botonNueva" class="boton-nuevo" onclick="abrirFormularioNuevo()">➕ Nueva Empresa</button>
             
             <div id="contenedorTabla">
                 <div id="mensajeDatos"></div>
                 <div id="tablaEmpresa"></div>
             </div>
-
             <!-- Sección Alimentos -->
             <div id="seccionAlimentos" class="seccion-alimentos" style="display: none;">
                 <h3>🥗 Alimentos Asociados — NIT: <span id="nitSeleccionado"></span></h3>
@@ -314,14 +296,18 @@
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        // 🔑 Conexión a Supabase (se mantiene para guardar, editar, eliminar)
         const supabaseUrl = 'https://swwodfpirqvwliuiswup.supabase.co';
         const supabaseKey = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
         const clienteSupabase = supabase.createClient(supabaseUrl, supabaseKey, {
             auth: { storage: localStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
         });
+
+        // ✅ === NUEVA CONEXIÓN A TU BACKEND EN RENDER ===
+        const API_BASE = "https://paquetesorpresa.onrender.com/api";
+
         let nitActual = null;
         let fechaRegistroAuto = "";
 
@@ -395,7 +381,6 @@
             fechaRegistroAuto = data.Registro || obtenerFechaHoy();
             document.getElementById('empresaRegistro').value = fechaRegistroAuto;
             
-            document.getElementById('empresaContacto').value = data["Contacto Principal"] || "";
             document.getElementById('empresaVigente').checked = data.Vigente;
             document.getElementById('empresaVigente').disabled = false;
             document.getElementById('correoRepresentante').value = data.correorepresentante || "";
@@ -425,7 +410,6 @@
             const btnGuardar = document.getElementById('btnGuardar');
             btnGuardar.disabled = true;
             btnGuardar.textContent = "Guardando...";
-
             try {
                 const nit = document.getElementById('empresaNit').value.trim();
                 const correo = document.getElementById('correoRepresentante').value.trim();
@@ -449,7 +433,6 @@
                 if (numeroCuenta.length > 20) {
                     throw new Error("⚠️ El Número de Cuenta no puede exceder 20 caracteres");
                 }
-
                 const datos = {
                     "NIT": nit,
                     "Nombre Legal": document.getElementById('empresaNombreLegal').value.trim(),
@@ -462,7 +445,6 @@
                     "tipocta": document.getElementById('tipoCuenta').value,
                     "cuenta": numeroCuenta
                 };
-
                 let respuesta;
                 if (document.getElementById('empresaNit').disabled) {
                     if (!confirm("¿Guardar cambios en esta empresa?")) return;
@@ -470,7 +452,6 @@
                 } else {
                     respuesta = await clienteSupabase.from("Empresa").insert([datos]);
                 }
-
                 if (respuesta.error) {
                     if (respuesta.error.code === '23505') throw new Error("El NIT ya está registrado");
                     if (respuesta.error.code === '23514') {
@@ -479,13 +460,11 @@
                     }
                     throw respuesta.error;
                 }
-
                 alert(document.getElementById('empresaNit').disabled 
                     ? "✅ Actualizado correctamente" 
                     : "✅ Creado correctamente");
                 cancelarFormulario();
                 cargarTablaEmpresa();
-
             } catch (err) {
                 alert("Error: " + err.message);
             } finally {
@@ -506,18 +485,18 @@
             cargarTablaEmpresa();
         }
 
+        // ✅ === FUNCIÓN MODIFICADA: Ahora lee desde tu Backend en Render ===
         async function cargarTablaEmpresa() {
             const tablaDiv = document.getElementById('tablaEmpresa');
             const msgDiv = document.getElementById('mensajeDatos');
-            msgDiv.innerHTML = '<p class="info">Cargando datos...</p>';
+            msgDiv.innerHTML = '<p class="info">Cargando datos desde el servidor...</p>';
             tablaDiv.style.opacity = '0.5';
 
             try {
-                const { data, error } = await clienteSupabase
-                    .from("Empresa")
-                    .select('*')
-                    .order("Nombre Legal", { ascending: true });
-                if (error) throw error;
+                // 📞 Llamada a tu API en Render en lugar de directo a Supabase
+                const respuesta = await fetch(`${API_BASE}/empresas`);
+                const resultado = await respuesta.json();
+                const data = resultado.datos;
 
                 if (!data || data.length === 0) {
                     msgDiv.innerHTML = `<p class="info">No hay empresas registradas</p>`;
@@ -567,6 +546,7 @@
                 tablaDiv.innerHTML = html;
             } catch (err) {
                 msgDiv.innerHTML = `<p class="error">Error: ${err.message}</p>`;
+                console.error("Detalle del error:", err);
             } finally {
                 tablaDiv.style.opacity = '1';
             }
@@ -579,16 +559,13 @@
                     .select("secuencia, variedad")
                     .order("variedad", { ascending: true });
                 if (errTodos) throw errTodos;
-
                 const { data: asociados, error: errAsoc } = await clienteSupabase
                     .from("empresalimento")
                     .select("secuencia")
                     .eq("nit", nitActual);
                 if (errAsoc) throw errAsoc;
-
                 const idsAsociados = (asociados || []).map(a => a.secuencia);
                 const disponibles = (todos || []).filter(a => !idsAsociados.includes(a.secuencia));
-
                 const select = document.getElementById("alimentoDisponible");
                 select.innerHTML = `<option value="">-- Seleccione un alimento del catálogo --</option>`;
                 disponibles.forEach(a => {
@@ -607,22 +584,18 @@
                     .select("secuencia")
                     .eq("nit", nitActual);
                 if (errRel) throw errRel;
-
                 if (!relaciones || relaciones.length === 0) {
                     div.innerHTML = `<p class="sin-registros">📋 Esta empresa aún no tiene alimentos asociados.</p>`;
                     return;
                 }
-
                 const { data: todosAlimentos, error: errAlim } = await clienteSupabase
                     .from("alimento")
                     .select("secuencia, variedad");
                 if (errAlim) throw errAlim;
-
                 const mapaAlimentos = {};
                 todosAlimentos.forEach(a => {
                     mapaAlimentos[a.secuencia] = a.variedad;
                 });
-
                 let html = `
                 <table>
                     <thead>
