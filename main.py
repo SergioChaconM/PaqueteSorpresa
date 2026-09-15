@@ -55,3 +55,22 @@ def obtener_paquetes():
 def obtener_empresas():
     respuesta = supabase.table("empresas").select("*").execute()
     return {"datos": respuesta.data}
+
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+# Servir archivos HTML en la raíz
+@app.get("/{nombre_pagina}")
+def servir_pagina(nombre_pagina: str):
+    if os.path.exists(nombre_pagina):
+        return FileResponse(nombre_pagina)
+    return {"error": "Página no encontrada"}
+
+# Página principal
+@app.get("/paginas/{nombre}")
+def ver_pagina(nombre: str):
+    ruta = f"{nombre}.html"
+    if os.path.exists(ruta):
+        return FileResponse(ruta)
+    return {"error": "Página no encontrada"}

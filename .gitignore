@@ -27,3 +27,6 @@ env/
 Thumbs.db
 *.log
 pip-log.txt
+
+# Ignorar archivos de texto
+*.txt
