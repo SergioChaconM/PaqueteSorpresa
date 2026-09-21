@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Paquetes Anteriores al Día de Hoy</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
         body { 
             font-family: Arial, sans-serif; 
             margin: 0.5rem;
@@ -82,11 +82,10 @@
             color: #c0392b !important;
             text-decoration: line-through;
         }
-        /* Anchos de columna ajustados */
         th:nth-child(1), td:nth-child(1)  { width: 65px; min-width: 65px; }
         th:nth-child(2), td:nth-child(2)  { width: 180px; min-width: 180px; }
         th:nth-child(3), td:nth-child(3)  { width: 100px; min-width: 100px; font-size: 0.95rem; font-weight: 600; }
-        th:nth-child(4), td:nth-child(4)  { width: 120px; min-width: 120px; }
+        th:nth-child(4), td:nth-child(4)  { width: 140px; min-width: 140px; }
         th:nth-child(5), td:nth-child(5)  { width: 130px; min-width: 130px; font-size: 0.9rem; }
         th:nth-child(6), td:nth-child(6)  { width: 110px; min-width: 110px; }
         th:nth-child(7), td:nth-child(7)  { width: 140px; min-width: 140px; }
@@ -127,14 +126,14 @@
             background-color: #e8f5e9;
             color: #2E7D32;
             border: 1px solid #a5d6a7;
+            display: block;
         }
         .error-msj {
             background-color: #ffebee;
             color: #c0392b;
             border: 1px solid #ef9a9a;
+            display: block;
         }
-
-        /* ✅ Estilos para el campo de precio editable */
         .precio-editable {
             width: 90%;
             padding: 0.25rem;
@@ -150,8 +149,6 @@
             border-color: #1f7ed9;
             box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
         }
-
-        /* ✅ Estilos para móviles */
         @media (max-width: 768px) {
             table { 
                 width: 100%; 
@@ -181,219 +178,190 @@
         <p class="info">Cargando datos...</p>
     </div>
     <div id="mensajeAccion" class="mensaje-accion"></div>
-    <script>
-        const parametros = new URLSearchParams(window.location.search);
-        const nit = parametros.get('NIT') || parametros.get('nit');
-        const sucursal = parametros.get('Sucursal') || parametros.get('sucursal');
-        
-        // ⚠️ Recordatorio: En producción, mover estas constantes a variables de entorno
-        const SUPABASE_URL = 'https://swwodfpirqvwliuiswup.supabase.co';
-        const SUPABASE_KEY = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
-        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-            auth: { storage: localStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
-        });
-        
-        // ✅ Fecha de hoy en formato AAAA-MM-DD
-        const hoy = new Date().toISOString().split('T')[0];
-        
-        // ✅ Formatea fecha como: "03 septiembre 2026"
-        function formatearFecha(fechaISO) {
-            if (!fechaISO) return '-';
-            const meses = [
-                'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-            ];
-            const [anio, mes, dia] = fechaISO.split('-');
-            const mesNombre = meses[parseInt(mes) - 1];
-            return `${parseInt(dia).toString().padStart(2, '0')} ${mesNombre} ${anio}`;
+
+<script>
+    // 🔗 API — SIN credenciales expuestas 🔒
+    const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+        ? "http://127.0.0.1:8000/api"
+        : "/api";
+
+    const parametros = new URLSearchParams(window.location.search);
+    const nit = parametros.get('NIT') || parametros.get('nit');
+    const sucursal = parametros.get('Sucursal') || parametros.get('sucursal');
+    
+    let fechaHoy = ''; // Se recibe desde la API
+
+    function formatearFecha(fechaISO) {
+        if (!fechaISO) return '-';
+        const meses = [
+            'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+        ];
+        const [anio, mes, dia] = fechaISO.split('-');
+        const mesNombre = meses[parseInt(mes) - 1];
+        return `${parseInt(dia).toString().padStart(2, '0')} ${mesNombre} ${anio}`;
+    }
+    
+    function mostrarMensaje(texto, tipo = 'exito') {
+        const caja = document.getElementById('mensajeAccion');
+        caja.textContent = texto;
+        caja.style.display = 'block';
+        caja.className = `mensaje-accion ${tipo === 'exito' ? 'exito' : 'error-msj'}`;
+        setTimeout(() => { caja.style.display = 'none'; }, 3500);
+    }
+    
+    async function reactivarPaquete(idPaquete, precioOriginal) {
+        if (!nit || !sucursal) {
+            mostrarMensaje('❌ Faltan datos de NIT o Sucursal', 'error-msj');
+            return;
         }
         
-        function mostrarMensaje(texto, tipo = 'exito') {
-            const caja = document.getElementById('mensajeAccion');
-            caja.textContent = texto;
-            caja.style.display = 'block';
-            caja.className = `mensaje-accion ${tipo === 'exito' ? 'exito' : 'error-msj'}`;
-            setTimeout(() => { caja.style.display = 'none'; }, 3500);
+        const campoPrecio = document.getElementById(`precio-${idPaquete}`);
+        let nuevoPrecio = campoPrecio.value.trim();
+        if (!nuevoPrecio) nuevoPrecio = precioOriginal;
+        
+        const precioNumerico = parseFloat(nuevoPrecio);
+        if (isNaN(precioNumerico) || precioNumerico < 0) {
+            mostrarMensaje('❌ Por favor ingresa un precio válido', 'error-msj');
+            campoPrecio.focus();
+            return;
+        }
+        const precioFormateado = precioNumerico.toFixed(2);
+        
+        const confirmar = confirm(
+            `¿Seguro que deseas REACTIVAR este paquete?\n\n` +
+            `📅 Nueva fecha: ${formatearFecha(fechaHoy)}\n` +
+            `💰 Nuevo precio: Q ${precioFormateado}`
+        );
+        if (!confirmar) {
+            mostrarMensaje('ℹ️ Operación cancelada');
+            return;
         }
         
-        // ✅ Reactivar Paquete: actualiza fecha Y precio al mismo tiempo
-        async function reactivarPaquete(idPaquete, precioOriginal) {
-            // ✅ Validación extra antes de continuar
-            if (!nit || !sucursal) {
-                mostrarMensaje('❌ Faltan datos de NIT o Sucursal', 'error-msj');
-                return;
-            }
-
-            // ✅ Obtener el valor que el usuario escribió en el campo de precio
-            const campoPrecio = document.getElementById(`precio-${idPaquete}`);
-            let nuevoPrecio = campoPrecio.value.trim();
-
-            // ✅ Si está vacío, usar el precio original
-            if (!nuevoPrecio) {
-                nuevoPrecio = precioOriginal;
-            }
-
-            // ✅ Validar que sea un número válido
-            const precioNumerico = parseFloat(nuevoPrecio);
-            if (isNaN(precioNumerico) || precioNumerico < 0) {
-                mostrarMensaje('❌ Por favor ingresa un precio válido', 'error-msj');
-                campoPrecio.focus();
-                return;
-            }
-
-            const precioFormateado = precioNumerico.toFixed(2);
-            const confirmar = confirm(
-                `¿Seguro que deseas REACTIVAR este paquete?\n\n` +
-                `📅 Nueva fecha: ${formatearFecha(hoy)}\n` +
-                `💰 Nuevo precio: Q ${precioFormateado}`
+        try {
+            mostrarMensaje('🔄 Actualizando fecha y precio del paquete...');
+            
+            // 1. Actualizar precio
+            const resPrecio = await fetch(
+                `${API_BASE}/paquetes-oferton/actualizar-precio/${encodeURIComponent(nit)}/${sucursal}/${idPaquete}?nuevo_precio=${precioNumerico}`,
+                { method: 'PATCH' }
             );
-            if (!confirmar) {
-                mostrarMensaje('ℹ️ Operación cancelada');
-                return;
-            }
+            if (!resPrecio.ok) throw await resPrecio.json();
             
-            try {
-                mostrarMensaje('🔄 Actualizando fecha y precio del paquete...');
-                
-                // ✅ ACTUALIZA AMBOS CAMPOS: fecha + precio
-                const { error } = await sb
-                    .from('PaqueteOferton')
-                    .update({ 
-                        DiaPromoción: hoy,
-                        PrecioOferton: precioNumerico
-                    })
-                    .eq('IDPaquete', idPaquete)
-                    .eq('NIT', nit)
-                    .eq('Sucursal', sucursal);
-                
-                if (error) throw error;
-                
-                mostrarMensaje(`✅ Paquete reactivado — Fecha: ${formatearFecha(hoy)} | Precio: Q ${precioFormateado}`);
-                
-                // ✅ Recarga inmediata sin tiempo fijo
-                cargarDatos();
-                
-            } catch (err) {
-                mostrarMensaje(`❌ Error al reactivar paquete: ${err.message}`, 'error-msj');
-                console.error(err);
-            }
+            // 2. Reactivar (asignar fecha de hoy)
+            const resReactivar = await fetch(
+                `${API_BASE}/paquetes-oferton/reactivar/${encodeURIComponent(nit)}/${sucursal}/${idPaquete}`,
+                { method: 'PATCH' }
+            );
+            if (!resReactivar.ok) throw await resReactivar.json();
+            
+            mostrarMensaje(`✅ Paquete reactivado — Fecha: ${formatearFecha(fechaHoy)} | Precio: Q ${precioFormateado}`);
+            await cargarDatos();
+            
+        } catch (err) {
+            mostrarMensaje(`❌ Error: ${err.detail || err.message}`, 'error-msj');
+            console.error(err);
+        }
+    }
+    
+    async function cargarDatos() {
+        const contenedor = document.getElementById('contenido');
+        const tituloPagina = document.getElementById('tituloPagina');
+        
+        if (!nit || !sucursal) {
+            contenedor.innerHTML = `<p class="error">⚠️ Faltan parámetros. Usa: ?NIT=XXXX&Sucursal=YY</p>`;
+            return;
         }
         
-        async function cargarDatos() {
-            const contenedor = document.getElementById('contenido');
-            const tituloPagina = document.getElementById('tituloPagina');
+        try {
+            // Cargar nombre de empresa
+            const resEmpresa = await fetch(`${API_BASE}/empresas`);
+            const { datos: empresas } = await resEmpresa.json();
+            const empresa = empresas.find(e => e.NIT === nit);
+            const nombreComercial = empresa?.["Nombre Comercial"] || empresa?.["Nombre Legal"] || "Empresa no encontrada";
             
-            if (!nit || !sucursal) {
-                contenedor.innerHTML = `<p class="error">⚠️ Faltan parámetros. Usa: ?NIT=XXXX&Sucursal=YY</p>`;
+            // Cargar sucursal
+            const resSucursal = await fetch(`${API_BASE}/sucursales?nit=${encodeURIComponent(nit)}`);
+            const { datos: sucursales } = await resSucursal.json();
+            const suc = sucursales.find(s => s.Sucursal === parseInt(sucursal));
+            const localizacion = suc?.Localización || "Ubicación no encontrada";
+            
+            tituloPagina.textContent = `Paquetes Anteriores — ${nombreComercial} — ${localizacion}`;
+            
+            // Cargar paquetes anteriores
+            const resPaquetes = await fetch(
+                `${API_BASE}/paquetes-oferton/anteriores?nit=${encodeURIComponent(nit)}&sucursal=${sucursal}`
+            );
+            if (!resPaquetes.ok) throw new Error(`Error ${resPaquetes.status}`);
+            const { datos: paquetes, fecha_hoy } = await resPaquetes.json();
+            fechaHoy = fecha_hoy;
+            
+            if (!paquetes || paquetes.length === 0) {
+                contenedor.innerHTML = `<p class="info">✅ No hay paquetes anteriores a hoy en esta sucursal.</p>`;
                 return;
             }
             
-            try {
-                let nombreComercial = "Empresa no encontrada";
-                let localizacion = "Ubicación no encontrada";
+            let tablaHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID<br>Paquete</th>
+                        <th>Productos</th>
+                        <th>Precio<br>Normal</th>
+                        <th>💰 Precio<br>Ofertón ✏️</th>
+                        <th>Día<br>Promoción</th>
+                        <th>Cantidad<br>Disponible</th>
+                        <th>Reactivar</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+            
+            paquetes.forEach(p => {
+                const disponible = p.disponible ?? 0;
+                const agotado = disponible <= 0;
+                const fechaBonita = formatearFecha(p.DiaPromoción);
+                const precioOriginal = p.PrecioOferton ? Number(p.PrecioOferton).toFixed(2) : '0.00';
                 
-                const { data: listaEmpresa, error: errEmpresa } = await sb
-                    .from('Empresa')
-                    .select('"Nombre Comercial"')
-                    .eq('NIT', nit)
-                    .limit(1);
-                
-                if (errEmpresa) throw errEmpresa;
-                if (listaEmpresa && listaEmpresa.length > 0) {
-                    nombreComercial = listaEmpresa[0]['Nombre Comercial']?.trim() || nombreComercial;
-                }
-                
-                const { data: listaSucursal, error: errSucursal } = await sb
-                    .from('Sucursal')
-                    .select('Localización')
-                    .eq('NIT', nit)
-                    .eq('Sucursal', sucursal)
-                    .limit(1);
-                
-                if (errSucursal) throw errSucursal;
-                if (listaSucursal && listaSucursal.length > 0) {
-                    localizacion = listaSucursal[0].Localización?.trim() || localizacion;
-                }
-                
-                tituloPagina.textContent = `Paquetes Anteriores — ${nombreComercial} — ${localizacion}`;
-                
-                // ✅ CONSULTA: SOLO FECHAS ANTERIORES A HOY
-                const { data: paquetes, error: errPaquetes } = await sb
-                    .from('PaqueteOferton')
-                    .select('IDPaquete, Productos, PrecioNormal, PrecioOferton, DiaPromoción, detalle, disponible')
-                    .eq('NIT', nit)
-                    .eq('Sucursal', sucursal)
-                    .eq('Estado', 'D')
-                    .lt('DiaPromoción', hoy);
-                
-                if (errPaquetes) throw errPaquetes;
-                
-                if (!paquetes || paquetes.length === 0) {
-                    contenedor.innerHTML = `<p class="info">✅ No hay paquetes anteriores a hoy en esta sucursal.</p>`;
-                    return;
-                }
-                
-                let tablaHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID<br>Paquete</th>
-                            <th>Productos</th>
-                            <th>Precio<br>Normal</th>
-                            <th>💰 Precio<br>Ofertón ✏️</th>
-                            <th>Día<br>Promoción</th>
-                            <th>Cantidad<br>Disponible</th>
-                            <th>Reactivar</th>
-                            <th>Detalle</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                tablaHTML += `
+                    <tr>
+                        <td>${p.IDPaquete ?? '-'}</td>
+                        <td>${p.Productos || '-'}</td>
+                        <td>Q ${p.PrecioNormal ? Number(p.PrecioNormal).toFixed(2) : '0.00'}</td>
+                        <td>
+                            <input type="number" 
+                                   id="precio-${p.IDPaquete}" 
+                                   class="precio-editable" 
+                                   value="${precioOriginal}"
+                                   step="0.01"
+                                   min="0"
+                                   placeholder="0.00">
+                        </td>
+                        <td><strong>${fechaBonita}</strong></td>
+                        <td class="disponible ${agotado ? 'agotado' : ''}">${disponible}</td>
+                        <td>
+                            <button class="btn-reactivar" 
+                                    onclick="reactivarPaquete(${p.IDPaquete}, '${precioOriginal}')">
+                                🔄 Reactivar
+                            </button>
+                        </td>
+                        <td class="celda-detalle">${p.detalle || '-'}</td>
+                    </tr>
                 `;
-                
-                paquetes.forEach(p => {
-                    const disponible = p.disponible ?? 0;
-                    const agotado = disponible <= 0;
-                    const fechaBonita = formatearFecha(p.DiaPromoción);
-                    const precioOriginal = p.PrecioOferton ? Number(p.PrecioOferton).toFixed(2) : '0.00';
-                    
-                    tablaHTML += `
-                        <tr>
-                            <td>${p.IDPaquete ?? '-'}</td>
-                            <td>${p.Productos || '-'}</td>
-                            <td>Q ${p.PrecioNormal ? Number(p.PrecioNormal).toFixed(2) : '0.00'}</td>
-                            <td>
-                                <input type="number" 
-                                       id="precio-${p.IDPaquete}" 
-                                       class="precio-editable" 
-                                       value="${precioOriginal}"
-                                       step="0.01"
-                                       min="0"
-                                       placeholder="0.00">
-                            </td>
-                            <td><strong>${fechaBonita}</strong></td>
-                            <td class="disponible ${agotado ? 'agotado' : ''}">${disponible}</td>
-                            <td>
-                                <button class="btn-reactivar" 
-                                        onclick="reactivarPaquete(${p.IDPaquete}, '${precioOriginal}')">
-                                    🔄 Reactivar Paquete
-                                </button>
-                            </td>
-                            <td class="celda-detalle">${p.detalle || '-'}</td>
-                        </tr>
-                    `;
-                });
-                
-                tablaHTML += `</tbody></table>`;
-                contenedor.innerHTML = tablaHTML;
-                
-            } catch (error) {
-                tituloPagina.textContent = "Paquetes Anteriores al Día de Hoy";
-                contenedor.innerHTML = `<p class="error">❌ Error: ${error.message || 'Error desconocido'}</p>`;
-                console.error("Detalle del error:", error);
-            }
+            });
+            
+            tablaHTML += `</tbody></table>`;
+            contenedor.innerHTML = tablaHTML;
+            
+        } catch (error) {
+            tituloPagina.textContent = "Paquetes Anteriores al Día de Hoy";
+            contenedor.innerHTML = `<p class="error">❌ Error: ${error.message || 'Error desconocido'}</p>`;
+            console.error(error);
         }
-        
-        document.addEventListener('DOMContentLoaded', cargarDatos);
-    </script>
+    }
+    
+    document.addEventListener('DOMContentLoaded', cargarDatos);
+</script>
 </body>
 </html>

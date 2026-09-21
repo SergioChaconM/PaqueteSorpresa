@@ -500,6 +500,72 @@ def eliminar_alimento(secuencia: int, supabase: Client = Depends(get_supabase)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# 📦 PAQUETES OFERTÓN — consultas específicas
+@app.get("/api/paquetes-oferton/anteriores")
+def listar_paquetes_anteriores(nit: str, sucursal: int, supabase: Client = Depends(get_supabase)):
+    """Paquetes con fecha de promoción anterior a hoy (Estado = 'D')"""
+    try:
+        from datetime import date
+        hoy = date.today().isoformat()
+        
+        respuesta = supabase.table("PaqueteOferton")\
+            .select("IDPaquete, Productos, PrecioNormal, PrecioOferton, DiaPromoción, detalle, disponible")\
+            .eq("NIT", nit)\
+            .eq("Sucursal", sucursal)\
+            .eq("Estado", "D")\
+            .lt("DiaPromoción", hoy)\
+            .order("DiaPromoción", asc=False)\
+            .execute()
+        return {"datos": respuesta.data, "fecha_hoy": hoy}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.patch("/api/paquetes-oferton/reactivar/{nit}/{sucursal}/{idpaquete}")
+def reactivar_paquete(
+    nit: str,
+    sucursal: int,
+    idpaquete: int,
+    supabase: Client = Depends(get_supabase)
+):
+    """Reactivar: asignar fecha de hoy al paquete"""
+    try:
+        from datetime import date
+        hoy = date.today().isoformat()
+        
+        respuesta = supabase.table("PaqueteOferton")\
+            .update({"DiaPromoción": hoy})\
+            .eq("NIT", nit)\
+            .eq("Sucursal", sucursal)\
+            .eq("IDPaquete", idpaquete)\
+            .execute()
+        if not respuesta.data:
+            raise HTTPException(status_code=404, detail="Paquete no encontrado")
+        return {"mensaje": "Paquete reactivado ✅", "datos": respuesta.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.patch("/api/paquetes-oferton/actualizar-precio/{nit}/{sucursal}/{idpaquete}")
+def actualizar_precio(
+    nit: str,
+    sucursal: int,
+    idpaquete: int,
+    nuevo_precio: float,
+    supabase: Client = Depends(get_supabase)
+):
+    """Actualizar solo el precio ofertón"""
+    try:
+        respuesta = supabase.table("PaqueteOferton")\
+            .update({"PrecioOferton": nuevo_precio})\
+            .eq("NIT", nit)\
+            .eq("Sucursal", sucursal)\
+            .eq("IDPaquete", idpaquete)\
+            .execute()
+        if not respuesta.data:
+            raise HTTPException(status_code=404, detail="Paquete no encontrado")
+        return {"mensaje": "Precio actualizado ✅", "datos": respuesta.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # 🌐 Servir páginas
 @app.get("/{nombre_pagina}")
 def servir_pagina(nombre_pagina: str):
