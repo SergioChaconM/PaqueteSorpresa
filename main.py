@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from supabase import create_client, Client
 from passlib.context import CryptContext
+from datetime import date
 import os
 from dotenv import load_dotenv
 
@@ -493,7 +494,6 @@ def eliminar_alimento(secuencia: int, supabase: Client = Depends(get_supabase)):
 def listar_paquetes_anteriores(nit: str, sucursal: int, supabase: Client = Depends(get_supabase)):
     """Paquetes con fecha de promoción anterior a hoy (Estado = 'D')"""
     try:
-        from datetime import date
         hoy = date.today().isoformat()
         
         respuesta = supabase.table("PaqueteOferton")\
@@ -517,7 +517,6 @@ def reactivar_paquete(
 ):
     """Reactivar: asignar fecha de hoy al paquete"""
     try:
-        from datetime import date
         hoy = date.today().isoformat()
         
         respuesta = supabase.table("PaqueteOferton")\
