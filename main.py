@@ -553,49 +553,57 @@ def actualizar_precio(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 📋 SUCURSALES CON PAQUETES ANTERIORES
 @app.get("/api/sucursales-con-paquetes-anteriores")
 def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabase)):
     """Devuelve empresas/sucursales que tienen paquetes anteriores a hoy con Estado='D'"""
     try:
         hoy = date.today().isoformat()
-
-        # 1. Obtener paquetes anteriores
+        
+        # 1. Obtener paquetes — filtramos SOLO por fecha en BD, Estado en Python
         res_paquetes = supabase.table("PaqueteOferton")\
-            .select("NIT, Sucursal, IDPaquete")\
-            .eq("Estado", "D")\
+            .select("NIT, Sucursal, IDPaquete, Estado")\
             .lt("DiaPromoción", hoy)\
             .execute()
-        paquetes = res_paquetes.data or []
-
+        paquetes_todos = res_paquetes.data or []
+        
+        # Filtrar en Python: solo Estado = 'D' → evita problema con tipo ENUM
+        paquetes = [
+            p for p in paquetes_todos
+            if str(p.get("Estado", "")).strip() == "D"
+        ]
+        
         if not paquetes:
             return {"datos": [], "fecha_hoy": hoy}
-
+        
         # Extraer NITs únicos
         nits_unicos = list({p["NIT"] for p in paquetes})
-
-        # 2. Nombres EXACTOS tal cual están en tu tabla
+        
+        # 2. Consultar empresas — nombres exactos con comillas
         res_empresas = supabase.table("Empresa")\
             .select('NIT, "Nombre Comercial", "Nombre Legal"')\
             .in_("NIT", nits_unicos)\
             .execute()
         empresas = res_empresas.data or []
-        mapa_empresas = {
-            e["NIT"]: (e.get("Nombre Comercial") or "").strip() or (e.get("Nombre Legal") or "").strip() or "Sin nombre"
-            for e in empresas
-        }
-
+        
+        mapa_empresas = {}
+        for e in empresas:
+            nombre_comercial = e.get("Nombre Comercial") or ""
+            nombre_legal = e.get("Nombre Legal") or ""
+            mapa_empresas[e["NIT"]] = (nombre_comercial.strip() or nombre_legal.strip() or "Sin nombre")
+        
         # 3. Cargar ubicaciones de sucursales
         res_sucursales = supabase.table("Sucursal")\
             .select("NIT, Sucursal, Localización")\
             .execute()
         sucursales = res_sucursales.data or []
-        mapa_sucursales = {
-            (s["NIT"], s["Sucursal"]): (s.get("Localización") or "").strip() or "Sin ubicación"
-            for s in sucursales
-        }
-
-        # 4. Agrupar por (NIT, Sucursal) y contar paquetes
+        
+        mapa_sucursales = {}
+        for s in sucursales:
+            clave = (s["NIT"], s["Sucursal"])
+            loc = s.get("Localización") or ""
+            mapa_sucursales[clave] = loc.strip() or "Sin ubicación"
+        
+        # 4. Agrupar y contar
         agrupado = {}
         for p in paquetes:
             clave = (p["NIT"], p["Sucursal"])
@@ -608,12 +616,14 @@ def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabas
                     "total_paquetes": 0
                 }
             agrupado[clave]["total_paquetes"] += 1
-
+        
         return {
             "datos": list(agrupado.values()),
             "fecha_hoy": hoy
         }
+        
     except Exception as e:
+        print(f"❌ ERROR: {type(e).__name__}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # 🌐 Servir páginas
