@@ -555,55 +555,65 @@ def actualizar_precio(
 
 @app.get("/api/sucursales-con-paquetes-anteriores")
 def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabase)):
-    """Devuelve empresas/sucursales que tienen paquetes anteriores a hoy con Estado='D'"""
     try:
         hoy = date.today().isoformat()
-        
-        # 1. Obtener paquetes — filtramos SOLO por fecha en BD, Estado en Python
-        res_paquetes = supabase.table("PaqueteOferton")\
-            .select("NIT, Sucursal, IDPaquete, Estado")\
-            .lt("DiaPromoción", hoy)\
-            .execute()
-        paquetes_todos = res_paquetes.data or []
-        
-        # Filtrar en Python: solo Estado = 'D' → evita problema con tipo ENUM
-        paquetes = [
-            p for p in paquetes_todos
-            if str(p.get("Estado", "")).strip() == "D"
-        ]
-        
+        print(f"PASO 1: Fecha hoy = {hoy}")
+
+        # --- PASO 2: Solo paquetes, SIN filtro de Estado ---
+        try:
+            res_paquetes = supabase.table("PaqueteOferton")\
+                .select("NIT, Sucursal, IDPaquete, Estado")\
+                .lt("DiaPromoción", hoy)\
+                .execute()
+            paquetes_todos = res_paquetes.data or []
+            print(f"PASO 2: Paquetes encontrados = {len(paquetes_todos)}")
+        except Exception as e:
+            print(f"FALLO EN PASO 2 (PaqueteOferton): {str(e)}")
+            raise HTTPException(status_code=500, detail=f"PASO2: {str(e)}")
+
+        # Filtrar Estado en Python
+        paquetes = [p for p in paquetes_todos if str(p.get("Estado","")).strip() == "D"]
+        print(f"PASO 3: Paquetes Estado=D = {len(paquetes)}")
+
         if not paquetes:
             return {"datos": [], "fecha_hoy": hoy}
-        
-        # Extraer NITs únicos
+
         nits_unicos = list({p["NIT"] for p in paquetes})
-        
-        # 2. Consultar empresas — nombres exactos con comillas
-        res_empresas = supabase.table("Empresa")\
-            .select('NIT, "Nombre Comercial", "Nombre Legal"')\
-            .in_("NIT", nits_unicos)\
-            .execute()
-        empresas = res_empresas.data or []
-        
-        mapa_empresas = {}
-        for e in empresas:
-            nombre_comercial = e.get("Nombre Comercial") or ""
-            nombre_legal = e.get("Nombre Legal") or ""
-            mapa_empresas[e["NIT"]] = (nombre_comercial.strip() or nombre_legal.strip() or "Sin nombre")
-        
-        # 3. Cargar ubicaciones de sucursales
-        res_sucursales = supabase.table("Sucursal")\
-            .select("NIT, Sucursal, Localización")\
-            .execute()
-        sucursales = res_sucursales.data or []
-        
-        mapa_sucursales = {}
-        for s in sucursales:
-            clave = (s["NIT"], s["Sucursal"])
-            loc = s.get("Localización") or ""
-            mapa_sucursales[clave] = loc.strip() or "Sin ubicación"
-        
-        # 4. Agrupar y contar
+        print(f"PASO 4: NITs únicos = {nits_unicos}")
+
+        # --- PASO 5: Empresas ---
+        try:
+            res_empresas = supabase.table("Empresa")\
+                .select('NIT, "Nombre Comercial", "Nombre Legal"')\
+                .in_("NIT", nits_unicos)\
+                .execute()
+            empresas = res_empresas.data or []
+            print(f"PASO 5: Empresas encontradas = {len(empresas)}")
+        except Exception as e:
+            print(f"FALLO EN PASO 5 (Empresa): {str(e)}")
+            raise HTTPException(status_code=500, detail=f"PASO5: {str(e)}")
+
+        # --- PASO 6: Sucursales ---
+        try:
+            res_sucursales = supabase.table("Sucursal")\
+                .select("NIT, Sucursal, Localización")\
+                .execute()
+            sucursales = res_sucursales.data or []
+            print(f"PASO 6: Sucursales encontradas = {len(sucursales)}")
+        except Exception as e:
+            print(f"FALLO EN PASO 6 (Sucursal): {str(e)}")
+            raise HTTPException(status_code=500, detail=f"PASO6: {str(e)}")
+
+        # --- Preparar resultados ---
+        mapa_empresas = {
+            e["NIT"]: ((e.get("Nombre Comercial") or "").strip() or (e.get("Nombre Legal") or "").strip() or "Sin nombre")
+            for e in empresas
+        }
+        mapa_sucursales = {
+            (s["NIT"], s["Sucursal"]): (s.get("Localización") or "").strip() or "Sin ubicación"
+            for s in sucursales
+        }
+
         agrupado = {}
         for p in paquetes:
             clave = (p["NIT"], p["Sucursal"])
@@ -616,15 +626,12 @@ def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabas
                     "total_paquetes": 0
                 }
             agrupado[clave]["total_paquetes"] += 1
-        
-        return {
-            "datos": list(agrupado.values()),
-            "fecha_hoy": hoy
-        }
-        
+
+        return {"datos": list(agrupado.values()), "fecha_hoy": hoy}
+
     except Exception as e:
-        print(f"❌ ERROR: {type(e).__name__}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"FALLO GENERAL: {type(e).__name__}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"GENERAL: {str(e)}")
 
 # 🌐 Servir páginas
 @app.get("/{nombre_pagina}")
