@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 # 📍 Cargar variables de entorno
 carpeta_actual = os.path.dirname(os.path.abspath(__file__))
 ruta_env = os.path.join(carpeta_actual, ".env")
+
 load_dotenv(dotenv_path=ruta_env)
 
 # 🔑 Leer credenciales
@@ -19,9 +20,15 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "*")
 
-# ❌ Detener si faltan credenciales
+# Solo si faltan → cargar desde .env (solo para tu computadora local)
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    print("❌ ERROR: Faltan variables de entorno")
+    load_dotenv(dotenv_path=ruta_env)
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+    SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+
+# ❌ Detener si realmente faltan
+if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+    print("❌ ERROR: No se encontraron credenciales de Supabase")
     exit(1)
 
 # ✅ Inicializar API
