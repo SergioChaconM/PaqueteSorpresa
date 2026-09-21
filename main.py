@@ -80,23 +80,11 @@ class SucursalUpdate(SucursalCreate):
     NIT: str | None = None
     Sucursal: int | None = None
 
-# 🏠 Ruta raíz
+# 🏠 Ruta raíz → redirigir automáticamente a la página principal
 @app.get("/")
 def raiz():
-    return {
-        "mensaje": "✅ API funcionando — Paquete Sorpresa",
-        "documentacion": "/docs",
-        "paginas": {
-            "seleccion_empresa": "/estatico/seleccionar_empresa.html",
-            "mantenimiento_empresa": "/estatico/MantenimientoEmpresa.html",
-            "mantenimiento_sucursal": "/estatico/MantenimientoSucursal.html"
-        },
-        "endpoints": {
-            "paquetes": "/api/paquetes",
-            "empresas": "/api/empresas",
-            "sucursales": "/api/sucursales"
-        }
-    }
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/estatico/index.html")
 
 # 📦 Paquetes
 @app.get("/api/paquetes")
