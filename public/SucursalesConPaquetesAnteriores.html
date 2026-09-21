@@ -164,110 +164,69 @@
     <div id="contenedor">
         <p class="centro">Cargando registros...</p>
     </div>
-    <script>
-        const API_URL = "https://swwodfpirqvwliuiswup.supabase.co/rest/v1";
-        const API_KEY = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
+
+<script>
+    // 🔗 API — SIN credenciales expuestas 🔒
+    const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+        ? "http://127.0.0.1:8000/api"
+        : "/api";
+
+    async function cargar() {
+        const contenedor = document.getElementById('contenedor');
         
-        // ✅ Fecha de hoy en formato AAAA-MM-DD
-        const hoy = new Date().toLocaleDateString('en-CA');
-        document.getElementById('fechaHoy').textContent = hoy;
-        
-        const headers = {
-            "apikey": API_KEY,
-            "Authorization": `Bearer ${API_KEY}`,
-            "Accept": "application/json"
-        };
-        
-        async function cargar() {
-            const contenedor = document.getElementById('contenedor');
-            try {
-                // ✅ CONDICIÓN EXACTA:
-                // DiaPromoción ANTES de hoy (menor que hoy) Y Estado = "D"
-                const filtroFecha = `"DiaPromoción"=lt.${hoy}`;
-                const filtroEstado = `Estado=eq.D`;
-                
-                const [resPaquetes, resEmpresas, resSucursales] = await Promise.all([
-                    fetch(`${API_URL}/PaqueteOferton?select=NIT,Sucursal,IDPaquete&${filtroFecha}&${filtroEstado}`, { headers }),
-                    fetch(`${API_URL}/Empresa?select=NIT,"Nombre Comercial"`, { headers }),
-                    fetch(`${API_URL}/Sucursal?select=NIT,Sucursal,"Localización"`, { headers })
-                ]);
-                
-                if (!resPaquetes.ok) throw new Error(`Paquetes: ${resPaquetes.status}`);
-                if (!resEmpresas.ok) throw new Error(`Empresas: ${resEmpresas.status}`);
-                if (!resSucursales.ok) throw new Error(`Sucursales: ${resSucursales.status}`);
-                
-                const [paquetes, empresas, sucursales] = await Promise.all([
-                    resPaquetes.json(),
-                    resEmpresas.json(),
-                    resSucursales.json()
-                ]);
-                
-                if (paquetes.length === 0) {
-                    contenedor.innerHTML = `<p class="centro aviso">📭 No hay paquetes anteriores a hoy sin comprar</p>`;
-                    return;
-                }
-                
-                const mapaEmpresas = new Map(empresas.map(e => [e.NIT, e["Nombre Comercial"]]));
-                const mapaSucursales = new Map(sucursales.map(s => [`${s.NIT}||${s.Sucursal}`, s["Localización"]]));
-                
-                const agrupado = new Map();
-                paquetes.forEach(p => {
-                    const nombreComercial = mapaEmpresas.get(p.NIT) || "Sin nombre comercial";
-                    const claveSucursal = `${p.NIT}||${p.Sucursal}`;
-                    const localizacion = mapaSucursales.get(claveSucursal) || "Sin ubicación";
-                    const claveGrupo = `${nombreComercial}||${localizacion}`;
-                    
-                    if (!agrupado.has(claveGrupo)) {
-                        agrupado.set(claveGrupo, {
-                            nombreComercial,
-                            localizacion,
-                            nit: p.NIT,
-                            sucursal: p.Sucursal,
-                            totalPaquetes: 0
-                        });
-                    }
-                    agrupado.get(claveGrupo).totalPaquetes++;
-                });
-                
-                const listaGrupos = Array.from(agrupado.values());
-                let html = `
-                <div class="contenedor-tabla">
-                    <div class="fila fila-encabezado">
-                        <div>🏢 Empresa</div>
-                        <div>📍 Ubicación</div>
-                        <div>📦 Total Paquetes</div>
-                        <div>Ver</div>
-                    </div>`;
-                let nombreAnterior = "";
-                listaGrupos.forEach(grupo => {
-                    const claseOcultar = grupo.nombreComercial === nombreAnterior ? "oculto" : "";
-                    const nombreAMostrar = grupo.nombreComercial;
-                    
-                    const enlaceDetalle = `PaquetesDe1Sucursal.html?NIT=${encodeURIComponent(grupo.nit)}&Sucursal=${encodeURIComponent(grupo.sucursal)}`;
-                    
-                    html += `
-                    <div class="fila fila-datos">
-                        <div class="col-nombre ${claseOcultar}">${nombreAMostrar}</div>
-                        <div class="col-ubicacion">${grupo.localizacion}</div>
-                        <div class="col-cantidad">
-                            <span class="etiqueta-cantidad">${grupo.totalPaquetes}</span>
-                        </div>
-                        <div class="col-enlace">
-                            <a class="btn-ver" href="${enlaceDetalle}">Ver →</a>
-                        </div>
-                    </div>`;
-                    nombreAnterior = grupo.nombreComercial;
-                });
-                html += `</div>`;
-                contenedor.innerHTML = html;
-                console.log(`✅ Paquetes leídos: ${paquetes.length}`);
-                console.log(`✅ Grupos formados: ${agrupado.size}`);
-            } catch (err) {
-                contenedor.innerHTML = `<p class="centro error">❌ ${err.message}</p>`;
-                console.error("❌ Error:", err);
+        try {
+            const res = await fetch(`${API_BASE}/sucursales-con-paquetes-anteriores`);
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            
+            const { datos, fecha_hoy } = await res.json();
+            document.getElementById('fechaHoy').textContent = fecha_hoy;
+
+            if (!datos || datos.length === 0) {
+                contenedor.innerHTML = `<p class="centro aviso">📭 No hay paquetes anteriores a hoy sin comprar</p>`;
+                return;
             }
+
+            let html = `
+            <div class="contenedor-tabla">
+                <div class="fila fila-encabezado">
+                    <div>🏢 Empresa</div>
+                    <div>📍 Ubicación</div>
+                    <div>📦 Total Paquetes</div>
+                    <div>Ver</div>
+                </div>`;
+            
+            let nombreAnterior = "";
+            datos.forEach(grupo => {
+                const claseOcultar = grupo.nombre_comercial === nombreAnterior ? "oculto" : "";
+                const nombreAMostrar = grupo.nombre_comercial;
+                
+                const enlaceDetalle = `PaquetesDe1Sucursal.html?NIT=${encodeURIComponent(grupo.nit)}&Sucursal=${encodeURIComponent(grupo.sucursal)}`;
+                
+                html += `
+                <div class="fila fila-datos">
+                    <div class="col-nombre ${claseOcultar}">${nombreAMostrar}</div>
+                    <div class="col-ubicacion">${grupo.localizacion}</div>
+                    <div class="col-cantidad">
+                        <span class="etiqueta-cantidad">${grupo.total_paquetes}</span>
+                    </div>
+                    <div class="col-enlace">
+                        <a class="btn-ver" href="${enlaceDetalle}">Ver →</a>
+                    </div>
+                </div>`;
+                nombreAnterior = grupo.nombre_comercial;
+            });
+            
+            html += `</div>`;
+            contenedor.innerHTML = html;
+            
+            console.log(`✅ Grupos formados: ${datos.length}`);
+        } catch (err) {
+            contenedor.innerHTML = `<p class="centro error">❌ ${err.message}</p>`;
+            console.error("❌ Error:", err);
         }
-        document.addEventListener('DOMContentLoaded', cargar);
-    </script>
+    }
+
+    document.addEventListener('DOMContentLoaded', cargar);
+</script>
 </body>
 </html>

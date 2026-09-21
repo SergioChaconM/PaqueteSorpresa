@@ -566,6 +566,73 @@ def actualizar_precio(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# 📋 SUCURSALES CON PAQUETES ANTERIORES
+@app.get("/api/sucursales-con-paquetes-anteriores")
+def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabase)):
+    """Devuelve empresas/sucursales que tienen paquetes anteriores a hoy con Estado='D'"""
+    try:
+        from datetime import date
+        hoy = date.today().isoformat()
+
+        # 1. Obtener paquetes anteriores
+        res_paquetes = supabase.table("PaqueteOferton")\
+            .select("NIT, Sucursal, IDPaquete")\
+            .eq("Estado", "D")\
+            .lt("DiaPromoción", hoy)\
+            .execute()
+        paquetes = res_paquetes.data or []
+
+        if not paquetes:
+            return {"datos": [], "fecha_hoy": hoy}
+
+        # Extraer NITs únicos
+        nits_unicos = list({p["NIT"] for p in paquetes})
+        # Extraer claves sucursales únicas
+        sucursales_claves = list({(p["NIT"], p["Sucursal"]) for p in paquetes})
+
+        # 2. Cargar nombres de empresas
+        res_empresas = supabase.table("Empresa")\
+            .select("NIT, Nombre_Comercial, Razon_Social")\
+            .in_("NIT", nits_unicos)\
+            .execute()
+        empresas = res_empresas.data or []
+        mapa_empresas = {
+            e["NIT"]: e.get("Nombre_Comercial") or e.get("Razon_Social") or "Sin nombre"
+            for e in empresas
+        }
+
+        # 3. Cargar ubicaciones de sucursales
+        res_sucursales = supabase.table("Sucursal")\
+            .select("NIT, Sucursal, Localización")\
+            .execute()
+        sucursales = res_sucursales.data or []
+        mapa_sucursales = {
+            (s["NIT"], s["Sucursal"]): s.get("Localización") or "Sin ubicación"
+            for s in sucursales
+        }
+
+        # 4. Agrupar por (NIT, Sucursal) y contar paquetes
+        agrupado = {}
+        for p in paquetes:
+            clave = (p["NIT"], p["Sucursal"])
+            if clave not in agrupado:
+                agrupado[clave] = {
+                    "nit": p["NIT"],
+                    "sucursal": p["Sucursal"],
+                    "nombre_comercial": mapa_empresas.get(p["NIT"], "Sin nombre"),
+                    "localizacion": mapa_sucursales.get(clave, "Sin ubicación"),
+                    "total_paquetes": 0
+                }
+            agrupado[clave]["total_paquetes"] += 1
+        }
+
+        return {
+            "datos": list(agrupado.values()),
+            "fecha_hoy": hoy
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # 🌐 Servir páginas
 @app.get("/{nombre_pagina}")
 def servir_pagina(nombre_pagina: str):
