@@ -3,572 +3,325 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sucursales - Gestión</title>
+    <title>Mantenimiento de Sucursales</title>
     <style>
         * { font-family: Arial, sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
-        
-        .formulario-edicion {
-            background: rgba(240, 253, 244, 0.98);
-            padding: 1.8rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            border: 1px solid #bbf7d0;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            max-width: 900px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .formulario-edicion h3 { margin-bottom: 1.4rem; color: #166534; text-align: center; }
-        .grid-campos {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 0.8rem 1.5rem;
-            align-items: center;
-        }
-        .grupo-campo {
-            display: flex;
-            flex-direction: column;
-        }
-        .grupo-campo label {
-            font-size: 0.85rem;
-            color: #14532d;
-            margin-bottom: 0.25rem;
-        }
-        .campo-ancho {
-            grid-column: 1 / -1;
-        }
-        input, select {
-            padding: 0.65rem 0.8rem;
-            border: 1px solid #86efac;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            transition: border-color 0.2s, box-shadow 0.2s;
-            width: 100%;
-            background: #ffffff;
-        }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #22c55e;
-            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
-        }
-        input:disabled, input[readonly] { 
-            background: #f0fdf4; 
-            color: #166534; 
-            cursor: not-allowed; 
-        }
-        select:disabled { background: #f0fdf4; color: #166534; cursor: not-allowed; }
-        .contenedor-checkbox {
-            display: flex;
-            align-items: center;
-            padding: 0.4rem 0;
-            gap: 0.5rem;
-        }
-        .contenedor-checkbox input[type="checkbox"] {
-            width: auto;
-            transform: scale(1.2);
-            margin: 0;
-        }
-        .contenedor-botones {
-            display: flex;
-            gap: 0.8rem;
-            margin-top: 1.4rem;
-            justify-content: center;
-        }
-        button {
-            background: #22c55e;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            padding: 0.7rem 1.5rem;
-            min-width: 120px;
-        }
-        button:hover { background: #16a34a; }
-        button:disabled { background: #86efac; cursor: not-allowed; opacity: 0.7; }
-        button.volver { background: #64748b; }
-        button.volver:hover { background: #475569; }
-        button.eliminar { background: #dc2626; padding: 0.5rem 1rem; }
-        button.eliminar:hover { background: #b91c1c; }
-        button.editar { background: #f59e0b; padding: 0.5rem 1rem; margin-right: 0.3rem; }
-        button.editar:hover { background: #d97706; }
-        .boton-nuevo { margin: 1rem 0; width: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
-        th, td { border: 1px solid #ddd; padding: 0.6rem; text-align: left; font-size: 0.82rem; vertical-align: middle; }
-        th { background: #f3f4f6; color: #1e293b; font-weight: bold; }
-        .acciones { width: 120px; text-align: center; }
-        .estado-activa { font-weight: bold; text-align: center; }
-        .estado-activa.activo { color: #16a34a; }
-        .estado-activa.inactivo { color: #dc2626; }
-        .error { color: #dc2626; margin: 1rem 0; font-weight: bold; }
-        .exito { color: #166534; margin: 1rem 0; font-weight: bold; }
-        .info { color: #15803d; margin: 0.5rem 0; font-size: 0.9rem; }
-        .sin-registros { color: #166534; font-style: italic; text-align: center; padding: 1.5rem; }
-        body {
-            margin: 0;
-            padding: 0;
-            position: relative;
-            min-height: 100vh;
-            background-color: #f0f4f8;
-        }
-        body::before {
-            content: "";
-            position: fixed;
-            inset: 0;
-            z-index: -2;
-            background-image: url('https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
-            background-size: cover;
-            background-position: center center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-        }
-        body::after {
-            content: "";
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            background: rgba(255, 255, 255, 0.55);
-            backdrop-filter: blur(1px);
-        }
-        #app {
-            position: relative;
-            z-index: 1;
-            max-width: 1200px;
-            width: 95%;
-            margin: 0 auto;
-            padding: 2rem 1rem;
-        }
-        #datos, #cargando {
-            background: rgba(255, 255, 255, 0.96);
-            padding: 2rem;
-            border-radius: 12px;
-            margin-top: 1rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .encabezado-pagina {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 1.5rem;
-            justify-content: space-between;
-            flex-wrap: wrap;
-        }
-        .encabezado-pagina h2 {
-            flex: 1;
-            text-align: center;
-            padding-right: 100px;
-            color: #166534;
-        }
-        .nit-actual { font-weight: bold; color: #15803d; }
-        .nombre-empresa { font-size: 1rem; color: #166534; font-weight: 500; }
-        #contenedorTabla { transition: opacity 0.2s ease; }
+        body { background: #f0f4f8; min-height: 100vh; padding: 2rem; }
+        .contenedor { max-width: 1200px; margin: 0 auto; }
+        .encabezado { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        h2 { color: #166534; text-align: center; flex: 1; }
+        .info-empresa { font-size: 0.95rem; color: #15803d; font-weight: 500; }
+        .volver { color: #3b82f6; text-decoration: none; }
+        .volver:hover { text-decoration: underline; }
+        .formulario { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+        .campo { display: flex; flex-direction: column; }
+        label { font-size: 0.9rem; color: #374151; margin-bottom: 0.3rem; font-weight: 500; }
+        input, select { padding: 0.7rem; border: 1px solid #d1d5db; border-radius: 5px; font-size: 0.95rem; }
+        input:focus, select:focus { outline: none; border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.15); }
+        input:disabled { background: #f3f4f6; }
+        .chk-row { flex-direction: row; align-items: center; gap: 0.5rem; padding-top: 0.5rem; }
+        .chk-row input { width: auto; }
+        .botones { display: flex; gap: 0.8rem; margin-top: 1.5rem; justify-content: center; }
+        button { padding: 0.8rem 1.5rem; border: none; border-radius: 5px; font-size: 0.95rem; cursor: pointer; min-width: 120px; }
+        .btn-primario { background: #22c55e; color: white; }
+        .btn-primario:hover { background: #16a34a; }
+        .btn-secundario { background: #6b7280; color: white; }
+        .btn-secundario:hover { background: #4b5563; }
+        .btn-peligro { background: #ef4444; color: white; padding: 0.5rem 1rem; }
+        .btn-peligro:hover { background: #dc2626; }
+        .btn-editar { background: #f59e0b; color: white; padding: 0.5rem 1rem; margin-right: 0.3rem; }
+        .btn-editar:hover { background: #d97706; }
+        .btn-nuevo { margin-bottom: 1rem; display: inline-block; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        th, td { padding: 0.9rem; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; }
+        th { background: #f9fafb; font-weight: bold; color: #1f2937; }
+        .acciones { width: 130px; text-align: center; }
+        .estado { text-align: center; font-weight: bold; }
+        .activa { color: #16a34a; }
+        .inactiva { color: #ef4444; }
+        .mensaje { margin: 1rem 0; padding: 0.8rem; border-radius: 5px; text-align: center; }
+        .exito { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .ayuda-clave { font-size: 0.8rem; color: #6b7280; margin-top: 0.3rem; }
+        .sin-datos { text-align: center; padding: 2rem; color: #6b7280; font-style: italic; }
     </style>
 </head>
 <body>
-    <div id="app">
-        <div id="cargando">🔐 Conectando automáticamente...</div>
+    <div class="contenedor">
+        <div class="encabezado">
+            <a href="seleccionar_empresa.html" class="volver">← Cambiar Empresa</a>
+            <h2>Mantenimiento de Sucursales</h2>
+            <div class="info-empresa" id="infoEmpresa"></div>
+        </div>
         
-        <div id="datos" style="display: none;">
-            <div class="encabezado-pagina">
-                <button type="button" class="volver" onclick="window.location.href='index.html'">← Volver</button>
-                <h2>Identificación de Sucursales</h2>
-                <div style="display: flex; gap: 1rem; align-items: center;">
-                    <span id="nitMostrar" class="nit-actual"></span>
-                    <span id="nombreEmpresaMostrar" class="nombre-empresa"></span>
+        <div id="mensaje"></div>
+        
+        <div class="formulario" id="formSucursal" style="display: none;">
+            <h3 id="tituloForm">Nueva Sucursal</h3>
+            <div class="grid">
+                <div class="campo">
+                    <label>NIT Empresa</label>
+                    <input type="text" id="sucNit" disabled>
+                </div>
+                <div class="campo">
+                    <label>Número de Sucursal</label>
+                    <input type="number" id="sucNumero" disabled>
+                </div>
+                <div class="campo" style="grid-column: 1 / -1;">
+                    <label for="sucDireccion">Dirección / Localización *</label>
+                    <input type="text" id="sucDireccion" required>
+                </div>
+                <div class="campo">
+                    <label for="sucContacto">Nombre de Contacto</label>
+                    <input type="text" id="sucContacto">
+                </div>
+                <div class="campo">
+                    <label for="sucCelular">Celular / Teléfono</label>
+                    <input type="text" id="sucCelular">
+                </div>
+                <div class="campo">
+                    <label for="sucCorreo">Correo Electrónico</label>
+                    <input type="email" id="sucCorreo">
+                </div>
+                <div class="campo chk-row">
+                    <input type="checkbox" id="sucActiva" checked>
+                    <label for="sucActiva">Sucursal Activa</label>
+                </div>
+                <div class="campo">
+                    <label for="sucClave">Contraseña de Acceso *</label>
+                    <input type="password" id="sucClave" placeholder="Mínimo 8 caracteres">
+                    <div class="ayuda-clave" id="ayudaClave">Obligatoria al crear</div>
                 </div>
             </div>
+            <div class="botones">
+                <button class="btn-primario" id="btnGuardar" onclick="guardar()">Guardar</button>
+                <button class="btn-secundario" onclick="cancelar()">Cancelar</button>
+            </div>
+        </div>
 
-            <div id="formularioSucursal" class="formulario-edicion" style="display: none;">
-                <h3 id="tituloForm">Nueva Sucursal</h3>
-                <div class="grid-campos">
-                    <div class="grupo-campo">
-                        <label for="sucursalNIT">Empresa (NIT) *</label>
-                        <select id="sucursalNIT" required>
-                            <option value="">-- Seleccione Empresa --</option>
-                        </select>
-                    </div>
-                    <div class="grupo-campo">
-                        <label for="numeroSucursal">Número de Sucursal *</label>
-                        <input type="number" id="numeroSucursal" placeholder="Auto-generado" required readonly>
-                    </div>
-                    <div class="grupo-campo campo-ancho">
-                        <label for="sucursalLocalizacion">Localización / Dirección *</label>
-                        <input type="text" id="sucursalLocalizacion" placeholder="Dirección completa, ciudad, etc." required>
-                    </div>
-                    <div class="grupo-campo">
-                        <label for="sucursalContacto">Nombre de Contacto</label>
-                        <input type="text" id="sucursalContacto" placeholder="Nombre de persona responsable">
-                    </div>
-                    <div class="grupo-campo">
-                        <label for="sucursalCelular">Celular / Teléfono</label>
-                        <input type="text" id="sucursalCelular" placeholder="ej. 5555-1234">
-                    </div>
-                    <div class="grupo-campo">
-                        <label for="sucursalCorreo">Correo Electrónico</label>
-                        <input type="email" id="sucursalCorreo" placeholder="correo@ejemplo.com" pattern=".*@.*" title="El correo debe contener el carácter @">
-                    </div>
-                    <div class="grupo-campo">
-                        <label>Estado de Sucursal</label>
-                        <div class="contenedor-checkbox">
-                            <input type="checkbox" id="sucursalActiva">
-                            <label for="sucursalActiva" style="margin:0;">✅ Sucursal Activa</label>
-                        </div>
-                    </div>
-                   <div class="grupo-campo">
-                        <label for="sucursalClave">Contraseña de Acceso</label>
-                        <input type="password" id="sucursalClave" placeholder="Mínimo 8 caracteres">
-                        <small style="color:#4b5563; font-size:0.75rem; margin-top:4px; display:block;">
-                            Dejar vacío para no cambiar la contraseña actual
-                        </small>
-                    </div>
-                </div>
-                <div class="contenedor-botones">
-                    <button id="btnGuardar" onclick="guardarSucursal()">Guardar</button>
-                    <button class="volver" onclick="cancelarFormulario()">Cancelar</button>
-                </div>
-            </div>
+        <button class="btn-primario btn-nuevo" onclick="abrirNuevo()">➕ Nueva Sucursal</button>
 
-            <button id="botonNueva" class="boton-nuevo" onclick="abrirFormularioNuevo()">➕ Nueva Sucursal</button>
-            
-            <div id="contenedorTabla">
-                <div id="mensajeDatos"></div>
-                <div id="tablaSucursal"></div>
-            </div>
+        <div id="tablaContainer">
+            <table id="tablaSucursales">
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Dirección</th>
+                        <th>Contacto</th>
+                        <th>Teléfono</th>
+                        <th>Correo</th>
+                        <th>Estado</th>
+                        <th class="acciones">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTabla"></tbody>
+            </table>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        const parametrosURL = new URLSearchParams(window.location.search);
-        const nitFiltrar = parametrosURL.get('nit');
-        const supabaseUrl = 'https://swwodfpirqvwliuiswup.supabase.co';
-        const supabaseKey = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
-        const credenciales = {
-            correo: "srchaconm@gmail.com",
-            clave: "ContraseñaSegura1"
-        };
-        const clienteSupabase = supabase.createClient(supabaseUrl, supabaseKey, {
-            auth: { storage: localStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
-        });
-        let claveEdicionActual = { NIT: null, Sucursal: null };
+<script>
+    const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+        ? "http://127.0.0.1:8000/api"
+        : "/api";
 
-        async function cargarTablaSucursal() {
-            const tablaDiv = document.getElementById('tablaSucursal');
-            const msgDiv = document.getElementById('mensajeDatos');
-            const botonNueva = document.getElementById('botonNueva');
-            
-            tablaDiv.style.opacity = '0.3';
-            msgDiv.innerHTML = '<p class="info">🔄 Consultando sucursales...</p>';
-            botonNueva.style.display = 'none';
+    const params = new URLSearchParams(window.location.search);
+    const NIT_EMPRESA = params.get("nit");
+    let edicion = { nit: null, numero: null };
 
-            try {
-                let consulta = clienteSupabase
-                    .from('Sucursal')
-                    .select('NIT, Sucursal, "Localización", Contacto, Celular, Correo, activa');
+    function mostrarMensaje(texto, tipo = "exito") {
+        const div = document.getElementById("mensaje");
+        div.className = `mensaje ${tipo}`;
+        div.textContent = texto;
+        setTimeout(() => div.textContent = "", 4000);
+    }
 
-                if (nitFiltrar) {
-                    consulta = consulta.eq('NIT', nitFiltrar);
-                }
-
-                const { data, error, status } = await consulta.order('Sucursal', { ascending: true });
-
-                console.log("📋 data:", data);
-                console.log("⚠️ error:", error);
-                console.log("🔢 status:", status);
-
-                let info = `<div style="background:#f0fdf4; padding:15px; border-radius:8px; margin:10px 0;">`;
-                info += `<p><b>Estado:</b> ${status}</p>`;
-                info += `<p><b>Error:</b> ${error ? error.message : 'NINGUNO ✅'}</p>`;
-                info += `<p><b>Registros encontrados:</b> ${data ? data.length : '0'}</p>`;
-                info += `</div>`;
-                msgDiv.innerHTML = info;
-
-                if (error) throw error;
-
-                botonNueva.style.display = 'inline-block';
-
-                if (data && data.length > 0) {
-                    let html = `
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>NIT</th>
-                                <th>N° Suc.</th>
-                                <th>Dirección / Localización</th>
-                                <th>Contacto</th>
-                                <th>Teléfono</th>
-                                <th>Correo</th>
-                                <th>Estado</th>
-                                <th class="acciones">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-                    
-                    data.forEach(s => {
-                        const esActiva = s.activa === 1 || s.activa === true;
-                        const etiquetaActiva = esActiva 
-                            ? '<span class="estado-activa activo">✅ Activa</span>' 
-                            : '<span class="estado-activa inactivo">❌ Inactiva</span>';
-                        
-                        html += `
-                            <tr>
-                                <td>${s.NIT}</td>
-                                <td>${s.Sucursal}</td>
-                                <td>${s["Localización"] || '—'}</td>
-                                <td>${s.Contacto || '—'}</td>
-                                <td>${s.Celular || '—'}</td>
-                                <td>${s.Correo || '—'}</td>
-                                <td>${etiquetaActiva}</td>
-                                <td class="acciones">
-                                    <button class="editar" onclick="abrirFormularioEditar('${s.NIT}', ${s.Sucursal})">✏️ Editar</button>
-                                    <button class="eliminar" onclick="eliminarSucursal('${s.NIT}', ${s.Sucursal})">🗑️ Eliminar</button>
-                                </td>
-                            </tr>`;
-                    });
-                    
-                    html += `</tbody></table>`;
-                    tablaDiv.innerHTML = html;
-                } else {
-                    tablaDiv.innerHTML = `
-                        <div class="sin-registros" style="padding:2rem; text-align:center;">
-                            <p>📭 Esta empresa aún no tiene sucursales.</p>
-                            <p style="margin-top:0.5rem;">👉 Presiona el botón de abajo para crear la primera.</p>
-                        </div>`;
-                }
-
-            } catch (err) {
-                msgDiv.innerHTML = `<p class="error">❌ Error: ${err.message}</p>`;
-                console.error("ERROR COMPLETO:", err);
-                botonNueva.style.display = 'inline-block';
-            } finally {
-                tablaDiv.style.opacity = '1';
+    async function cargarInfoEmpresa() {
+        try {
+            const res = await fetch(`${API_BASE}/empresas`);
+            const { datos } = await res.json();
+            const emp = datos.find(e => e.NIT === NIT_EMPRESA);
+            if (emp) {
+                document.getElementById("infoEmpresa").textContent = 
+                    `${emp.NIT} — ${emp["Nombre Legal"]}${emp["Nombre Comercial"] ? ` (${emp["Nombre Comercial"]})` : ''}`;
             }
-        }
+        } catch (e) { console.error(e); }
+    }
 
-        async function iniciarSesionAutomatica() {
-            const cargando = document.getElementById('cargando');
-            try {
-                cargando.innerHTML = "🔍 Verificando sesión...";
-                const { data: { session } } = await clienteSupabase.auth.getSession();
-                if (session) { mostrarSistema(); return; }
-                cargando.innerHTML = "🔐 Iniciando sesión...";
-                const { error } = await clienteSupabase.auth.signInWithPassword({
-                    email: credenciales.correo,
-                    password: credenciales.clave
-                });
-                if (error) throw error;
-                mostrarSistema();
-            } catch (err) {
-                cargando.innerHTML = `
-                    <p class="error">❌ No se pudo conectar</p>
-                    <p class="info">Motivo: ${err.message || 'Error desconocido'}</p>
+    async function cargarSucursales() {
+        if (!NIT_EMPRESA) {
+            document.getElementById("tablaContainer").innerHTML = 
+                '<p class="sin-datos">⚠️ No se especificó empresa. Vuelva a seleccionar.</p>';
+            return;
+        }
+        
+        try {
+            const res = await fetch(`${API_BASE}/sucursales?nit=${encodeURIComponent(NIT_EMPRESA)}`);
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            const { datos } = await res.json();
+            
+            const tbody = document.getElementById("cuerpoTabla");
+            tbody.innerHTML = "";
+            
+            if (datos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="sin-datos">📭 Esta empresa aún no tiene sucursales.</td></tr>';
+                return;
+            }
+            
+            datos.forEach(suc => {
+                const fila = document.createElement("tr");
+                fila.innerHTML = `
+                    <td>${suc.Sucursal}</td>
+                    <td>${suc["Localización"] || "—"}</td>
+                    <td>${suc.Contacto || "—"}</td>
+                    <td>${suc.Celular || "—"}</td>
+                    <td>${suc.Correo || "—"}</td>
+                    <td class="estado ${suc.activa === 0 ? 'inactiva' : 'activa'}">
+                        ${suc.activa === 0 ? "Inactiva" : "Activa"}
+                    </td>
+                    <td class="acciones">
+                        <button class="btn-editar" onclick="editarSuc('${suc.NIT}', ${suc.Sucursal})">✏️</button>
+                        <button class="btn-peligro" onclick="eliminarSuc('${suc.NIT}', ${suc.Sucursal})">🗑️</button>
+                    </td>
                 `;
-                console.error("Error completo:", err);
-            }
+                tbody.appendChild(fila);
+            });
+        } catch (err) {
+            mostrarMensaje("Error: " + err.message, "error");
         }
+    }
 
-        async function mostrarSistema() {
-            document.getElementById('cargando').style.display = 'none';
-            document.getElementById('datos').style.display = 'block';
+    async function obtenerSiguienteNumero() {
+        try {
+            const res = await fetch(`${API_BASE}/sucursales/siguiente-numero?nit=${encodeURIComponent(NIT_EMPRESA)}`);
+            const { siguiente_numero } = await res.json();
+            return siguiente_numero;
+        } catch { return 1; }
+    }
+
+    async function abrirNuevo() {
+        edicion = { nit: null, numero: null };
+        document.getElementById("tituloForm").textContent = "Nueva Sucursal";
+        document.getElementById("sucNit").value = NIT_EMPRESA;
+        document.getElementById("sucNumero").value = await obtenerSiguienteNumero();
+        document.getElementById("sucDireccion").value = "";
+        document.getElementById("sucContacto").value = "";
+        document.getElementById("sucCelular").value = "";
+        document.getElementById("sucCorreo").value = "";
+        document.getElementById("sucActiva").checked = true;
+        document.getElementById("sucClave").value = "";
+        document.getElementById("sucClave").required = true;
+        document.getElementById("sucClave").placeholder = "Mínimo 8 caracteres — obligatoria";
+        document.getElementById("ayudaClave").textContent = "Contraseña nueva sucursal";
+        document.getElementById("formSucursal").style.display = "block";
+    }
+
+    async function editarSuc(nit, numero) {
+        edicion = { nit, numero };
+        try {
+            const res = await fetch(`${API_BASE}/sucursales/${nit}/${numero}`);
+            if (!res.ok) throw new Error("No encontrada");
+            const suc = await res.json();
             
-            if (nitFiltrar) {
-                document.getElementById('nitMostrar').textContent = `NIT: ${nitFiltrar}`;
-                try {
-                    const { data: empresa } = await clienteSupabase
-                        .from('Empresa')
-                        .select('"Nombre Legal", "Nombre Comercial"')
-                        .eq('NIT', nitFiltrar)
-                        .single();
-                    if (empresa) {
-                        const nombreComercial = empresa["Nombre Comercial"] ? ` (${empresa["Nombre Comercial"]})` : '';
-                        document.getElementById('nombreEmpresaMostrar').textContent = `${empresa["Nombre Legal"]}${nombreComercial}`;
-                        document.title = `Sucursales - ${empresa["Nombre Legal"]}${nombreComercial} - Gestión`;
-                    }
-                } catch (e) {
-                    console.log("No se pudo cargar el nombre de la empresa:", e);
-                }
-            }
-            
-            await cargarTablaSucursal();
+            document.getElementById("tituloForm").textContent = "Editar Sucursal";
+            document.getElementById("sucNit").value = suc.NIT;
+            document.getElementById("sucNumero").value = suc.Sucursal;
+            document.getElementById("sucDireccion").value = suc["Localización"] || "";
+            document.getElementById("sucContacto").value = suc.Contacto || "";
+            document.getElementById("sucCelular").value = suc.Celular || "";
+            document.getElementById("sucCorreo").value = suc.Correo || "";
+            document.getElementById("sucActiva").checked = suc.activa !== 0;
+            document.getElementById("sucClave").value = "";
+            document.getElementById("sucClave").required = false;
+            document.getElementById("sucClave").placeholder = "Dejar vacío para no cambiar";
+            document.getElementById("ayudaClave").textContent = "Solo si desea cambiarla";
+            document.getElementById("formSucursal").style.display = "block";
+        } catch (err) {
+            mostrarMensaje(err.message, "error");
         }
+    }
 
-        async function cargarSelectEmpresas() {
-            const select = document.getElementById('sucursalNIT');
-            select.innerHTML = `<option value="">-- Seleccione Empresa --</option>`;
-            try {
-                const { data, error } = await clienteSupabase
-                    .from('Empresa')
-                    .select('NIT, "Nombre Legal", "Nombre Comercial"')
-                    .order('NIT');
-                if (error) throw error;
-                data.forEach(emp => {
-                    const texto = `${emp.NIT} | ${emp["Nombre Legal"]}${emp["Nombre Comercial"] ? ` (${emp["Nombre Comercial"]})` : ''}`;
-                    select.innerHTML += `<option value="${emp.NIT}">${texto}</option>`;
+    async function guardar() {
+        const btn = document.getElementById("btnGuardar");
+        btn.disabled = true;
+        btn.textContent = "Guardando...";
+        
+        try {
+            const direccion = document.getElementById("sucDireccion").value.trim();
+            if (!direccion) throw new Error("La dirección es obligatoria");
+            
+            const clave = document.getElementById("sucClave").value.trim();
+            if (!edicion.nit && !clave) throw new Error("Debe asignar una contraseña");
+            if (clave && clave.length < 8) throw new Error("Contraseña mínimo 8 caracteres");
+
+            const datos = {
+                NIT: NIT_EMPRESA,
+                Sucursal: parseInt(document.getElementById("sucNumero").value),
+                "Localización": direccion,
+                Contacto: document.getElementById("sucContacto").value.trim() || null,
+                Celular: document.getElementById("sucCelular").value.trim() || null,
+                Correo: document.getElementById("sucCorreo").value.trim() || null,
+                activa: document.getElementById("sucActiva").checked ? 1 : 0
+            };
+
+            if (clave) {
+                datos["Contraseña"] = clave;
+            }
+
+            let res;
+            if (edicion.nit) {
+                if (!confirm("¿Guardar cambios en esta sucursal?")) return;
+                res = await fetch(`${API_BASE}/sucursales/${edicion.nit}/${edicion.numero}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(datos)
                 });
-                if (nitFiltrar) {
-                    select.value = nitFiltrar;
-                    select.disabled = true;
-                }
-            } catch (err) {
-                alert("Error cargando empresas: " + err.message);
-                console.error(err);
+            } else {
+                res = await fetch(`${API_BASE}/sucursales`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(datos)
+                });
             }
-        }
 
-        async function abrirFormularioNuevo() {
-            claveEdicionActual = { NIT: null, Sucursal: null };
-            document.getElementById('tituloForm').textContent = "Nueva Sucursal";
-            document.getElementById('contenedorTabla').style.display = 'none';
-            document.getElementById('botonNueva').style.display = 'none';
-            await cargarSelectEmpresas();
-            
-            const nitSeleccionado = nitFiltrar || document.getElementById('sucursalNIT').value;
-            let siguienteNumero = 1;
-            if (nitSeleccionado) {
-                const { count } = await clienteSupabase
-                    .from('Sucursal')
-                    .select('Sucursal', { count: 'exact', head: true })
-                    .eq('NIT', nitSeleccionado);
-                siguienteNumero = (count || 0) + 1;
+            const resp = await res.json();
+            if (!res.ok) throw new Error(resp.detail || "Error al guardar");
+
+            mostrarMensaje(resp.mensaje || "Guardado correctamente ✅");
+            cancelar();
+            cargarSucursales();
+        } catch (err) {
+            mostrarMensaje("❌ " + err.message, "error");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Guardar";
+        }
+    }
+
+    async function eliminarSuc(nit, numero) {
+        if (!confirm("⚠️ ¿Eliminar esta sucursal? Esta acción no se puede deshacer.")) return;
+        try {
+            const res = await fetch(`${API_BASE}/sucursales/${nit}/${numero}`, { method: "DELETE" });
+            if (!res.ok) {
+                const e = await res.json();
+                throw new Error(e.detail || "Error al eliminar");
             }
-            document.getElementById('numeroSucursal').value = siguienteNumero;
-            document.getElementById('sucursalLocalizacion').value = '';
-            document.getElementById('sucursalContacto').value = '';
-            document.getElementById('sucursalCelular').value = '';
-            document.getElementById('sucursalCorreo').value = '';
-            document.getElementById('sucursalActiva').checked = true; // ✅ Activa por defecto
-            document.getElementById('sucursalClave').value = '';
-            document.getElementById('formularioSucursal').style.display = 'block';
+            mostrarMensaje("Sucursal eliminada ✅");
+            cargarSucursales();
+        } catch (err) {
+            mostrarMensaje("❌ " + err.message, "error");
         }
+    }
 
-        async function abrirFormularioEditar(nit, numSucursal) {
-            claveEdicionActual = { NIT: nit, Sucursal: numSucursal };
-            document.getElementById('tituloForm').textContent = "Editar Sucursal";
-            document.getElementById('contenedorTabla').style.display = 'none';
-            document.getElementById('botonNueva').style.display = 'none';
-            document.getElementById('mensajeDatos').innerHTML = "";
-            await cargarSelectEmpresas();
-            
-            const { data, error } = await clienteSupabase
-                .from('Sucursal')
-                .select('NIT, Sucursal, "Localización", Contacto, Celular, Correo, activa')
-                .eq('NIT', nit)
-                .eq('Sucursal', numSucursal)
-                .single();
-            if (error) throw error;
-            
-            document.getElementById('sucursalNIT').value = data.NIT;
-            document.getElementById('sucursalNIT').disabled = true;
-            document.getElementById('numeroSucursal').value = data.Sucursal;
-            document.getElementById('sucursalLocalizacion').value = data["Localización"] || '';
-            document.getElementById('sucursalContacto').value = data.Contacto || '';
-            document.getElementById('sucursalCelular').value = data.Celular ? String(data.Celular) : '';
-            document.getElementById('sucursalCorreo').value = data.Correo || '';
-            // ✅ Cargar estado del campo activa
-            document.getElementById('sucursalActiva').checked = (data.activa === 1 || data.activa === true);
-            document.getElementById('sucursalClave').value = '';
-            
-            document.getElementById('formularioSucursal').style.display = 'block';
-        }
+    function cancelar() {
+        document.getElementById("formSucursal").style.display = "none";
+        edicion = { nit: null, numero: null };
+    }
 
-        function cancelarFormulario() {
-            document.getElementById('formularioSucursal').style.display = 'none';
-            document.getElementById('contenedorTabla').style.display = 'block';
-            document.getElementById('botonNueva').style.display = 'inline-block';
-            document.getElementById('sucursalNIT').disabled = false;
-            claveEdicionActual = { NIT: null, Sucursal: null };
-        }
-
-        async function cifrarContraseña(textoPlano) {
-            if (!textoPlano || textoPlano.trim().length === 0) {
-                return null;
-            }
-            const encoder = new TextEncoder();
-            const datos = encoder.encode(textoPlano);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', datos);
-            const hashBytes = new Uint8Array(hashBuffer);
-            const hashCadena = Array.from(hashBytes)
-                .map(byte => byte.toString(16).padStart(2, '0'))
-                .join('');
-            return hashCadena;
-        }
-
-        async function guardarSucursal() {
-            const btn = document.getElementById('btnGuardar');
-            btn.disabled = true;
-            btn.textContent = "Guardando...";
-            try {
-                const nit = nitFiltrar || document.getElementById('sucursalNIT').value;
-                const numSuc = document.getElementById('numeroSucursal').value;
-                const claveNueva = document.getElementById('sucursalClave').value.trim();
-                const valorCelular = document.getElementById('sucursalCelular').value.trim();
-                // ✅ Leer valor del checkbox activa → convertir a 1 o 0
-                const valorActiva = document.getElementById('sucursalActiva').checked ? 1 : 0;
-                
-                const datos = {
-                    NIT: nit,
-                    Sucursal: parseInt(numSuc),
-                    "Localización": document.getElementById('sucursalLocalizacion').value.trim(),
-                    Contacto: document.getElementById('sucursalContacto').value.trim() || null,
-                    Celular: valorCelular ? parseInt(valorCelular.replace(/\D/g, '')) : null,
-                    Correo: document.getElementById('sucursalCorreo').value.trim().toLowerCase() || null,
-                    activa: valorActiva // ✅ Campo activa (1 o 0)
-                };
-                
-                if (!nit) throw new Error("⚠️ Seleccione una empresa");
-                if (!datos["Localización"]) throw new Error("⚠️ La dirección es obligatoria");
-                if (claveNueva.length > 0) {
-                    if (claveNueva.length < 8) {
-                        throw new Error("⚠️ La contraseña debe tener al menos 8 caracteres");
-                    }
-                    datos["Contraseña"] = await cifrarContraseña(claveNueva);
-                }
-                
-                let respuesta;
-                if (claveEdicionActual.NIT) {
-                    if (!confirm("¿Guardar cambios?")) return;
-                    respuesta = await clienteSupabase
-                        .from('Sucursal')
-                        .update(datos)
-                        .eq('NIT', claveEdicionActual.NIT)
-                        .eq('Sucursal', claveEdicionActual.Sucursal);
-                } else {
-                    if (claveNueva.length === 0) {
-                        throw new Error("⚠️ Debe asignar una contraseña a la sucursal");
-                    }
-                    respuesta = await clienteSupabase
-                        .from('Sucursal')
-                        .insert([datos]);
-                }
-                if (respuesta.error) throw respuesta.error;
-                alert(claveNueva.length > 0 
-                    ? "✅ Datos guardados. Contraseña actualizada correctamente." 
-                    : "✅ Datos guardados. Contraseña sin cambios.");
-                cancelarFormulario();
-                cargarTablaSucursal();
-            } catch (err) {
-                alert("❌ " + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = "Guardar";
-            }
-        }
-
-        async function eliminarSucursal(nit, numSucursal) {
-            if (!confirm("⚠️ ¿Eliminar esta sucursal?")) return;
-            const { error } = await clienteSupabase
-                .from('Sucursal')
-                .delete()
-                .eq('NIT', nit)
-                .eq('Sucursal', numSucursal);
-            if (error) return alert("Error al eliminar: " + error.message);
-            alert("✅ Sucursal eliminada correctamente");
-            cargarTablaSucursal();
-        }
-
-        window.addEventListener('load', iniciarSesionAutomatica);
-    </script>
+    window.addEventListener("load", () => {
+        cargarInfoEmpresa();
+        cargarSucursales();
+    });
+</script>
 </body>
 </html>

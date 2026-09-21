@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Filtro por Empresa</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
         body { background-color: #f0f4f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
@@ -24,7 +23,7 @@
 <body>
     <div class="contenedor">
         <h2>Identifique la Empresa</h2>
-        <div id="cargando">🔐 Conectando automáticamente...</div>
+        <div id="cargando">🔄 Cargando...</div>
         <div id="mensajeConteo" class="mensaje-conteo" style="display: none;"></div>
         
         <form id="formIngreso" style="display: none;">
@@ -40,104 +39,52 @@
     </div>
 
 <script>
-    // MISMA CONFIGURACIÓN EXACTA QUE EN EL CÓDIGO QUE SÍ FUNCIONA
-    const CREDENCIALES = {
-        usuario: "srchaconm@gmail.com",
-        clave: "ContraseñaSegura1"
-    };
-    const SUPABASE_URL = "https://swwodfpirqvwliuiswup.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
+    const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+        ? "http://127.0.0.1:8000/api"
+        : "/api";
 
-    const clienteSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: { storage: localStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
-    });
-
-    // MISMA LÓGICA DE INICIO
     function mostrarSistema() {
         document.getElementById('cargando').style.display = 'none';
         document.getElementById('formIngreso').style.display = 'block';
-        contarEmpresas();
-        cargarNIT();
+        cargarEmpresas();
     }
 
-    async function contarEmpresas() {
+    async function cargarEmpresas() {
         try {
-            const { count, error } = await clienteSupabase
-                .from('Empresa')
-                .select('*', { count: 'exact', head: true });
-
-            if (error) throw error;
+            const res = await fetch(`${API_BASE}/empresas`);
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            const { datos } = await res.json();
             
-            document.getElementById('mensajeConteo').textContent = `✅ Existen ${count} empresas registradas`;
+            document.getElementById('mensajeConteo').textContent = `✅ Existen ${datos.length} empresas registradas`;
             document.getElementById('mensajeConteo').style.display = 'block';
-        } catch (err) {
-            console.error('Error conteo:', err);
-            document.getElementById('mensajeConteo').textContent = `⚠️ No se pudo obtener el conteo: ${err.message}`;
-            document.getElementById('mensajeConteo').style.display = 'block';
-        }
-    }
-
-    async function cargarNIT() {
-    try {
-        // ✅ Se usa comillas dobles porque el campo tiene espacio: "Nombre Legal"
-        const { data, error } = await clienteSupabase
-            .from('Empresa')
-            .select("NIT, \"Nombre Legal\"")
-            .order("NIT", { ascending: true });
-
-        if (error) throw error;
-
-        const selectNit = document.getElementById('nit');
-        selectNit.innerHTML = '<option value="">Seleccione una empresa</option>';
-        data.forEach(item => {
-            let opcion = document.createElement('option');
-            opcion.value = item.NIT;
-            // ✅ Se accede al campo con espacio usando corchetes
-            opcion.textContent = `${item.NIT} - ${item["Nombre Legal"] || 'Sin nombre'}`;
-            selectNit.appendChild(opcion);
-        });
-
-    } catch (err) {
-        console.error('Error al cargar empresas:', err);
-        alert(`Error al cargar: ${err.message}`);
-    }
-}
-    async function iniciarSesionAutomatica() {
-        try {
-            const { data: { session } } = await clienteSupabase.auth.getSession();
-            if (session) { mostrarSistema(); return; }
             
-            const { error } = await clienteSupabase.auth.signInWithPassword({
-                email: CREDENCIALES.usuario, 
-                password: CREDENCIALES.clave
+            const selectNit = document.getElementById('nit');
+            selectNit.innerHTML = '<option value="">Seleccione una empresa</option>';
+            datos.forEach(item => {
+                let opcion = document.createElement('option');
+                opcion.value = item.NIT;
+                opcion.textContent = `${item.NIT} - ${item["Nombre Legal"] || 'Sin nombre'}`;
+                selectNit.appendChild(opcion);
             });
-            if (error) throw error;
-            
-            mostrarSistema();
         } catch (err) {
-            document.getElementById('cargando').innerHTML = `<p class="error">❌ Error de conexión: ${err.message}</p>`;
-            console.error("Fallo autenticación:", err);
+            console.error('Error:', err);
+            document.getElementById('mensajeConteo').textContent = `⚠️ No se pudo cargar: ${err.message}`;
+            document.getElementById('mensajeConteo').style.display = 'block';
         }
     }
 
-    window.addEventListener('load', iniciarSesionAutomatica);
+    window.addEventListener('load', mostrarSistema);
 
     const form = document.getElementById('formIngreso');
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const nit = document.getElementById('nit').value;
-        let valido = true;
-
         if (!nit) {
             document.getElementById('errorNit').style.display = 'block';
-            valido = false;
-        } else {
-            document.getElementById('errorNit').style.display = 'none';
+            return;
         }
-
-        if (valido) {
-            window.location.href = `MantenimientoSucursal.html?nit=${encodeURIComponent(nit)}`;
-        }
+        document.getElementById('errorNit').style.display = 'none';
+        window.location.href = `MantenimientoSucursal.html?nit=${encodeURIComponent(nit)}`;
     });
 </script>
 </body>

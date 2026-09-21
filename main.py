@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles  # ✅ Agregamos esto
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 from supabase import create_client, Client
+from passlib.context import CryptContext
 import os
 from dotenv import load_dotenv
 
@@ -13,56 +15,239 @@ load_dotenv(dotenv_path=ruta_env)
 
 # 🔑 Leer credenciales
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "*")
 
 # ❌ Detener si faltan credenciales
-if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print("❌ ERROR: Faltan variables de entorno")
     exit(1)
 
 # ✅ Inicializar API
-app = FastAPI(title="API de Paquete Sorpresa")
+app = FastAPI(title="API Paquete Sorpresa", version="2.0")
 
+# 🔒 Cifrado de contraseñas
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# 🌐 CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[FRONTEND_ORIGIN] if FRONTEND_ORIGIN != "*" else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 🔗 Conectar a Supabase
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+# 🔗 Conexión a Supabase
+def get_supabase() -> Client:
+    return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-# 📂 Servir archivos estáticos (HTML, CSS, JS) desde carpeta "public"
+# 📂 Servir archivos estáticos
 CARPETA_PUBLICA = os.path.join(carpeta_actual, "public")
 os.makedirs(CARPETA_PUBLICA, exist_ok=True)
 app.mount("/estatico", StaticFiles(directory=CARPETA_PUBLICA), name="archivos_estaticos")
 
-# 🏠 Ruta raíz: redirigir al index.html
+# 📋 Esquemas de validación
+class EmpresaCreate(BaseModel):
+    NIT: str
+    Razon_Social: str = Field(..., alias="Nombre Legal")
+    Nombre_Comercial: str | None = Field(None, alias="Nombre Comercial")
+    Direccion: str | None = None
+    Telefono: str | None = None
+    Correo: str | None = None
+    Activa: int = 1
+
+class EmpresaUpdate(BaseModel):
+    NIT: str | None = None
+    Razon_Social: str | None = Field(None, alias="Nombre Legal")
+    Nombre_Comercial: str | None = Field(None, alias="Nombre Comercial")
+    Direccion: str | None = None
+    Telefono: str | None = None
+    Correo: str | None = None
+    Activa: int | None = None
+
+class SucursalCreate(BaseModel):
+    NIT: str
+    Sucursal: int | None = None
+    Localización: str = Field(..., alias="Localización")
+    Contacto: str | None = None
+    Celular: int | None = None
+    Correo: str | None = None
+    activa: int = 1
+    Contraseña: str | None = None
+
+class SucursalUpdate(SucursalCreate):
+    NIT: str | None = None
+    Sucursal: int | None = None
+
+# 🏠 Ruta raíz
 @app.get("/")
 def raiz():
     return {
-        "mensaje": "✅ API funcionando y conectada a Supabase",
-        "documentacion": "https://paquetesorpresa.onrender.com/docs",
-        "pagina_inicio": "https://paquetesorpresa.onrender.com/estatico/index.html"
+        "mensaje": "✅ API funcionando — Paquete Sorpresa",
+        "documentacion": "/docs",
+        "paginas": {
+            "seleccion_empresa": "/estatico/seleccionar_empresa.html",
+            "mantenimiento_empresa": "/estatico/MantenimientoEmpresa.html",
+            "mantenimiento_sucursal": "/estatico/MantenimientoSucursal.html"
+        },
+        "endpoints": {
+            "paquetes": "/api/paquetes",
+            "empresas": "/api/empresas",
+            "sucursales": "/api/sucursales"
+        }
     }
 
-# 📦 Rutas de API
+# 📦 Paquetes
 @app.get("/api/paquetes")
-def obtener_paquetes():
-    respuesta = supabase.table("paquetes").select("*").execute()
-    return {"datos": respuesta.data}
+def obtener_paquetes(supabase: Client = Depends(get_supabase)):
+    try:
+        respuesta = supabase.table("paquetes").select("*").execute()
+        return {"datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
+# 🏢 Empresas
 @app.get("/api/empresas")
-def obtener_empresas():
-    respuesta = supabase.table("Empresa").select("*").order("Nombre Legal", desc=False).execute()
-    return {"datos": respuesta.data}
+def listar_empresas(supabase: Client = Depends(get_supabase)):
+    try:
+        respuesta = supabase.table("Empresa").select("*").order("Nombre Legal", desc=False).execute()
+        return {"datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# 🌐 Ruta amigable para páginas: /index.html → busca en carpeta public
+@app.get("/api/empresas/{nit}")
+def obtener_empresa(nit: str, supabase: Client = Depends(get_supabase)):
+    try:
+        respuesta = supabase.table("Empresa").select("*").eq("NIT", nit).single().execute()
+        if not respuesta.data:
+            raise HTTPException(status_code=404, detail="Empresa no encontrada")
+        return respuesta.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/empresas")
+def crear_empresa(datos: EmpresaCreate, supabase: Client = Depends(get_supabase)):
+    try:
+        datos_insertar = datos.model_dump(by_alias=True, exclude_unset=True)
+        respuesta = supabase.table("Empresa").insert(datos_insertar).execute()
+        return {"mensaje": "Empresa creada ✅", "datos": respuesta.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/empresas/{nit}")
+def actualizar_empresa(nit: str, datos: EmpresaUpdate, supabase: Client = Depends(get_supabase)):
+    try:
+        datos_actualizar = datos.model_dump(by_alias=True, exclude_unset=True)
+        respuesta = supabase.table("Empresa").update(datos_actualizar).eq("NIT", nit).execute()
+        if not respuesta.data:
+            raise HTTPException(status_code=404, detail="Empresa no encontrada")
+        return {"mensaje": "Empresa actualizada ✅", "datos": respuesta.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/empresas/{nit}")
+def eliminar_empresa(nit: str, supabase: Client = Depends(get_supabase)):
+    try:
+        respuesta = supabase.table("Empresa").delete().eq("NIT", nit).execute()
+        if not respuesta.data:
+            raise HTTPException(status_code=404, detail="Empresa no encontrada")
+        return {"mensaje": "Empresa eliminada ✅"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 🏪 Sucursales
+@app.get("/api/sucursales")
+def listar_sucursales(nit: str | None = None, supabase: Client = Depends(get_supabase)):
+    try:
+        consulta = supabase.table("Sucursal").select("*")
+        if nit:
+            consulta = consulta.eq("NIT", nit)
+        respuesta = consulta.order("Sucursal").execute()
+        return {"datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/sucursales/siguiente-numero")
+def siguiente_numero_sucursal(nit: str, supabase: Client = Depends(get_supabase)):
+    try:
+        respuesta = supabase.table("Sucursal").select("Sucursal", count="exact", head=True).eq("NIT", nit)
+        return {"siguiente_numero": (respuesta.count or 0) + 1}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/sucursales/{nit}/{numero}")
+def obtener_sucursal(nit: str, numero: int, supabase: Client = Depends(get_supabase)):
+    try:
+        respuesta = supabase.table("Sucursal").select("*").eq("NIT", nit).eq("Sucursal", numero).single().execute()
+        if not respuesta.data:
+            raise HTTPException(status_code=404, detail="Sucursal no encontrada")
+        return respuesta.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/sucursales")
+def crear_sucursal(datos: SucursalCreate, supabase: Client = Depends(get_supabase)):
+    try:
+        datos_insertar = datos.model_dump(by_alias=True, exclude_unset=True)
+        
+        if datos_insertar.get("Contraseña"):
+            if len(datos_insertar["Contraseña"]) < 8:
+                raise HTTPException(status_code=400, detail="Contraseña mínimo 8 caracteres")
+            datos_insertar["Contraseña"] = pwd_context.hash(datos_insertar["Contraseña"])
+        else:
+            raise HTTPException(status_code=400, detail="La contraseña es obligatoria")
+
+        respuesta = supabase.table("Sucursal").insert(datos_insertar).execute()
+        return {"mensaje": "Sucursal creada ✅", "datos": respuesta.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/sucursales/{nit}/{numero}")
+def actualizar_sucursal(
+    nit: str,
+    numero: int,
+    datos: SucursalUpdate,
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        datos_actualizar = datos.model_dump(by_alias=True, exclude_unset=True)
+        
+        if datos_actualizar.get("Contraseña"):
+            if len(datos_actualizar["Contraseña"]) < 8:
+                raise HTTPException(status_code=400, detail="Contraseña mínimo 8 caracteres")
+            datos_actualizar["Contraseña"] = pwd_context.hash(datos_actualizar["Contraseña"])
+        else:
+            datos_actualizar.pop("Contraseña", None)
+
+        respuesta = supabase.table("Sucursal").update(datos_actualizar).eq("NIT", nit).eq("Sucursal", numero).execute()
+        if not respuesta.data:
+            raise HTTPException(status_code=404, detail="Sucursal no encontrada")
+        return {"mensaje": "Sucursal actualizada ✅", "datos": respuesta.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/sucursales/{nit}/{numero}")
+def eliminar_sucursal(nit: str, numero: int, supabase: Client = Depends(get_supabase)):
+    try:
+        respuesta = supabase.table("Sucursal").delete().eq("NIT", nit).eq("Sucursal", numero).execute()
+        if not respuesta.data:
+            raise HTTPException(status_code=404, detail="Sucursal no encontrada")
+        return {"mensaje": "Sucursal eliminada ✅"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 🌐 Servir páginas
 @app.get("/{nombre_pagina}")
 def servir_pagina(nombre_pagina: str):
+    if "." not in nombre_pagina:
+        return RedirectResponse(url=f"/estatico/{nombre_pagina}.html")
     ruta_completa = os.path.join(CARPETA_PUBLICA, nombre_pagina)
     if os.path.exists(ruta_completa):
         return FileResponse(ruta_completa)
     return {"error": f"Página '{nombre_pagina}' no encontrada"}
+
+if __name__ == "__main__":
+    import uvicorn
+    puerto = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=puerto)
