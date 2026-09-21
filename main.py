@@ -571,7 +571,6 @@ def actualizar_precio(
 def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabase)):
     """Devuelve empresas/sucursales que tienen paquetes anteriores a hoy con Estado='D'"""
     try:
-        from datetime import date
         hoy = date.today().isoformat()
 
         # 1. Obtener paquetes anteriores
@@ -587,17 +586,15 @@ def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabas
 
         # Extraer NITs únicos
         nits_unicos = list({p["NIT"] for p in paquetes})
-        # Extraer claves sucursales únicas
-        sucursales_claves = list({(p["NIT"], p["Sucursal"]) for p in paquetes})
 
-        # 2. Cargar nombres de empresas
+        # 2. Nombres EXACTOS tal cual están en tu tabla
         res_empresas = supabase.table("Empresa")\
-            .select("NIT, Nombre_Comercial, Razon_Social")\
+            .select('NIT, "Nombre Comercial", "Nombre Legal"')\
             .in_("NIT", nits_unicos)\
             .execute()
         empresas = res_empresas.data or []
         mapa_empresas = {
-            e["NIT"]: e.get("Nombre_Comercial") or e.get("Razon_Social") or "Sin nombre"
+            e["NIT"]: (e.get("Nombre Comercial") or "").strip() or (e.get("Nombre Legal") or "").strip() or "Sin nombre"
             for e in empresas
         }
 
@@ -607,7 +604,7 @@ def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabas
             .execute()
         sucursales = res_sucursales.data or []
         mapa_sucursales = {
-            (s["NIT"], s["Sucursal"]): s.get("Localización") or "Sin ubicación"
+            (s["NIT"], s["Sucursal"]): (s.get("Localización") or "").strip() or "Sin ubicación"
             for s in sucursales
         }
 
@@ -624,7 +621,6 @@ def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabas
                     "total_paquetes": 0
                 }
             agrupado[clave]["total_paquetes"] += 1
-        }
 
         return {
             "datos": list(agrupado.values()),
