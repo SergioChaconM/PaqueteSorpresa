@@ -19,7 +19,6 @@
             align-items: center;
             padding: 20px;
         }
-        /* 🖼️ Contenedor de imágenes visibles */
         .imagen-fondo {
             position: fixed;
             z-index: 1;
@@ -32,17 +31,14 @@
             transition: all 1.2s ease-in-out;
             pointer-events: none;
         }
-        /* ✨ Entrada suave */
         .imagen-fondo.activa {
             opacity: 1;
             transform: scale(1) rotate(var(--rotacion, 0deg));
         }
-        /* ⚡ Salida suave */
         .imagen-fondo.saliendo {
             opacity: 0;
             transform: scale(0.5) translateY(-50px) rotate(0deg);
         }
-        /* 📋 Menú siempre al frente */
         .contenedor {
             position: relative;
             z-index: 10;
@@ -73,23 +69,20 @@
     </style>
 </head>
 <body>
-    <!-- 🖼️ Aquí se generarán las imágenes dinámicamente -->
     <div id="contenedorImagenes"></div>
     <div class="contenedor">
         <h1>🍽️ Sabores Auténticos</h1>
         <p class="subtitulo">Elige la sección que deseas visitar</p>
-        <a href="estatico/MantenimientoEmpresa.html" class="boton-opcion">📋 Control de Empresas</a>
-        <a href="estatico/seleccionar_empresa.html" class="boton-opcion">📍 Control Sucursales</a>
-        <!-- Los demás enlaces los mantienes igual cuando los migremos -->
+        
+        <!-- ✅ TODOS LOS ENLACES CORREGIDOS — SIN carpeta estatico/ -->
+        <a href="MantenimientoEmpresa.html" class="boton-opcion">📋 Control de Empresas</a>
+        <a href="NIT.html" class="boton-opcion">📍 Seleccionar Empresa</a>
         <a href="NITSucursal.html" class="boton-opcion">⏰ Organización de Horarios</a>
         <a href="NITSucursalPaquete.html" class="boton-opcion">🎁 Paquetones Sorpresa</a>
         <a href="MantenimientoAlimentos.html" class="boton-opcion">🥗 Clasificación de Productos</a>
         <a href="SucursalesConPaquetesAnteriores.html" class="boton-opcion">📦 Paquetes Anteriores al Día de Hoy</a>
-
-
     </div>
     <script>
-        // ✅ Configuración Supabase intacta
         const BASE_URL = "https://swwodfpirqvwliuiswup.supabase.co/storage/v1/object/public/Imagenes/";
         
         const imagenes = [
@@ -100,13 +93,12 @@
             "pizza.jpg", "pollo.jpg", "reposteria.jpg", "sandwich.jpg",
             "taco.jpg", "verdura.jpg"
         ];
-        // ⏱️ Configuración
-        const TIEMPO_CAMBIO = 5000; // 5 segundos entre cambios
-        const MAX_VISIBLES = 3;      // Máximo 3 imágenes a la vez
+        const TIEMPO_CAMBIO = 5000;
+        const MAX_VISIBLES = 3;
         const contenedor = document.getElementById("contenedorImagenes");
         let listaPendientes = [];
-        let colaVisibles = []; // Controla el orden: [más antigua, ..., más reciente]
-        // 🎲 Barajar lista aleatoriamente
+        let colaVisibles = [];
+        
         function barajarLista(arr) {
             const nueva = [...arr];
             for (let i = nueva.length - 1; i > 0; i--) {
@@ -115,7 +107,7 @@
             }
             return nueva;
         }
-        // 📐 Generar estilos aleatorios únicos
+        
         function generarEstilosAleatorios() {
             const ancho = 35 + Math.random() * 35;
             const alto = ancho * (0.55 + Math.random() * 0.5);
@@ -132,7 +124,7 @@
             const bordeRedondo = 12 + Math.random() * 16;
             return { ancho, alto, posX, posY, rotacion, sombra, bordeRedondo };
         }
-        // 🖼️ Crear elemento imagen con todos sus estilos
+        
         function crearImagenElemento(nombreImg, estilos) {
             const img = document.createElement("div");
             img.className = "imagen-fondo";
@@ -147,7 +139,7 @@
             img.dataset.nombre = nombreImg;
             return img;
         }
-        // 🔄 Lógica principal: entra nueva → si hay 3, sale la más antigua
+        
         function agregarNuevaImagen() {
             if (listaPendientes.length === 0) {
                 listaPendientes = barajarLista(imagenes);
@@ -155,30 +147,24 @@
             const nuevaImg = listaPendientes.pop();
             const estilos = generarEstilosAleatorios();
             const elemento = crearImagenElemento(nuevaImg, estilos);
-            // 📤 Si ya hay 3 visibles: despedir la más antigua
+            
             if (colaVisibles.length >= MAX_VISIBLES) {
                 const masAntigua = colaVisibles.shift();
                 masAntigua.classList.remove("activa");
                 masAntigua.classList.add("saliendo");
-                // Eliminar del DOM tras la animación de salida
                 setTimeout(() => masAntigua.remove(), 1200);
-                console.log(`➡️ Retirada: ${masAntigua.dataset.nombre}`);
             }
-            // 📥 Agregar la nueva
+            
             contenedor.appendChild(elemento);
             colaVisibles.push(elemento);
-            // ✨ Activar con animación de entrada
             setTimeout(() => elemento.classList.add("activa"), 50);
-            console.log(`✅ Entrada: ${nuevaImg} | Activas: ${colaVisibles.length}`);
         }
-        // 🚀 Iniciar todo
+        
         window.onload = () => {
             listaPendientes = barajarLista(imagenes);
-            // Mostrar las primeras 3 inmediatamente
             for (let i = 0; i < MAX_VISIBLES; i++) {
                 agregarNuevaImagen();
             }
-            // Luego ir cambiando cada cierto tiempo
             setInterval(agregarNuevaImagen, TIEMPO_CAMBIO);
         };
     </script>
