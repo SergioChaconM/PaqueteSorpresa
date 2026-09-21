@@ -117,10 +117,8 @@
     </style>
 </head>
 <body>
-
     <a href="javascript:history.back()" class="boton-volver">← Volver</a>
     <h1>🥗 Mantenimiento de Alimentos</h1>
-
     <div class="card">
         <h2 id="tituloForm">Agregar Nuevo Alimento</h2>
         <form id="formAlimento">
@@ -131,143 +129,158 @@
         </form>
         <div id="mensaje" class="mensaje"></div>
     </div>
-
     <div class="card">
         <h2>Alimentos Registrados</h2>
         <table>
             <thead>
                 <tr>
+                    <th style="width: 80px;">Secuencia</th>
                     <th>Variedad</th>
                     <th style="width: 160px;">Acciones</th>
                 </tr>
             </thead>
             <tbody id="listaAlimentos">
-                <tr><td colspan="2">Cargando...</td></tr>
+                <tr><td colspan="3">Cargando...</td></tr>
             </tbody>
         </table>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <script>
-        const SUPABASE_URL = 'https://swwodfpirqvwliuiswup.supabase.co';
-        const SUPABASE_KEY = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
+<script>
+    // 🔗 API — SIN credenciales expuestas 🔒
+    const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+        ? "http://127.0.0.1:8000/api"
+        : "/api";
 
-        const { createClient } = window.supabase;
-        const clienteSupabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const form = document.getElementById('formAlimento');
+    const lista = document.getElementById('listaAlimentos');
+    const mensaje = document.getElementById('mensaje');
+    const tituloForm = document.getElementById('tituloForm');
+    const inputSecuencia = document.getElementById('secuencia');
+    const inputVariedad = document.getElementById('variedad');
+    const btnGuardar = document.getElementById('btnGuardar');
+    const btnCancelar = document.getElementById('btnCancelar');
+    let modoEdicion = false;
 
-        const form = document.getElementById('formAlimento');
-        const lista = document.getElementById('listaAlimentos');
-        const mensaje = document.getElementById('mensaje');
-        const tituloForm = document.getElementById('tituloForm');
-        const inputSecuencia = document.getElementById('secuencia');
-        const inputVariedad = document.getElementById('variedad');
-        const btnGuardar = document.getElementById('btnGuardar');
-        const btnCancelar = document.getElementById('btnCancelar');
+    function mostrarMensaje(texto, tipo) {
+        mensaje.textContent = texto;
+        mensaje.className = `mensaje ${tipo}`;
+        setTimeout(() => mensaje.className = 'mensaje', 4000);
+    }
 
-        let modoEdicion = false;
-
-        document.addEventListener('DOMContentLoaded', cargarAlimentos);
-
-        form.addEventListener('submit', async e => {
-            e.preventDefault();
-            const variedad = inputVariedad.value.trim();
-            const secuencia = inputSecuencia.value;
-            if (!variedad) return;
-
-            try {
-                if (modoEdicion && secuencia) {
-                    const { error } = await clienteSupabase
-                        .from('alimento')
-                        .update({ variedad })
-                        .eq('secuencia', secuencia);
-                    if (error) throw error;
-                    mensaje.textContent = '✅ Alimento actualizado correctamente';
-                } else {
-                    const { error } = await clienteSupabase
-                        .from('alimento')
-                        .insert({ variedad });
-                    if (error) throw error;
-                    mensaje.textContent = '✅ Alimento guardado correctamente';
-                }
-                mensaje.className = 'mensaje exito';
-                resetFormulario();
-                await cargarAlimentos();
-            } catch (err) {
-                mensaje.textContent = '❌ Error: ' + err.message;
-                mensaje.className = 'mensaje error';
+    async function cargarAlimentos() {
+        try {
+            const res = await fetch(`${API_BASE}/alimentos`);
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            const { datos } = await res.json();
+            
+            if (datos.length === 0) {
+                lista.innerHTML = '<tr><td colspan="3">Sin registros aún.</td></tr>';
+                return;
             }
-            setTimeout(() => mensaje.className = 'mensaje', 4000);
-        });
-
-        btnCancelar.addEventListener('click', resetFormulario);
-
-        async function cargarAlimentos() {
-            try {
-                const { data, error } = await clienteSupabase
-                    .from('alimento')
-                    .select('secuencia, variedad')
-                    .order('secuencia', { ascending: true });
-
-                if (error) throw error;
-
-                if (data.length === 0) {
-                    lista.innerHTML = '<tr><td colspan="2">Sin registros aún.</td></tr>';
-                    return;
-                }
-
-                lista.innerHTML = data.map(alimento => `
-                    <tr>
-                        <td>${alimento.variedad}</td>
-                        <td class="acciones">
-                            <button class="btn-editar" onclick="editarAlimento(${alimento.secuencia}, '${alimento.variedad.replace(/'/g, "\\'")}')">Editar</button>
-                            <button class="btn-eliminar" onclick="eliminarAlimento(${alimento.secuencia})">Eliminar</button>
-                        </td>
-                    </tr>
-                `).join('');
-            } catch (err) {
-                lista.innerHTML = `<tr><td colspan="2">❌ Error: ${err.message}</td></tr>`;
-            }
+            
+            lista.innerHTML = datos.map(alimento => `
+                <tr>
+                    <td><strong>${alimento.secuencia}</strong></td>
+                    <td>${alimento.variedad}</td>
+                    <td class="acciones">
+                        <button class="btn-editar" onclick="editarAlimento(${alimento.secuencia}, '${alimento.variedad.replace(/'/g, "\\'")}')">Editar</button>
+                        <button class="btn-eliminar" onclick="eliminarAlimento(${alimento.secuencia})">Eliminar</button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (err) {
+            lista.innerHTML = `<tr><td colspan="3">❌ Error: ${err.message}</td></tr>`;
         }
+    }
 
-        window.editarAlimento = function(secuencia, variedad) {
-            modoEdicion = true;
-            tituloForm.textContent = 'Editar Alimento';
-            btnGuardar.textContent = 'Actualizar';
-            btnGuardar.className = 'btn-guardar';
-            btnCancelar.style.display = 'inline-block';
-            inputSecuencia.value = secuencia;
-            inputVariedad.value = variedad;
-            inputVariedad.focus();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        };
+    window.editarAlimento = function(secuencia, variedad) {
+        modoEdicion = true;
+        tituloForm.textContent = 'Editar Alimento';
+        btnGuardar.textContent = 'Actualizar';
+        btnGuardar.className = 'btn-guardar';
+        btnCancelar.style.display = 'inline-block';
+        inputSecuencia.value = secuencia;
+        inputVariedad.value = variedad;
+        inputVariedad.focus();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
-        window.eliminarAlimento = async function(secuencia) {
-            if (!confirm('⚠️ ¿Seguro que deseas eliminar este alimento?')) return;
-            try {
-                const { error } = await clienteSupabase
-                    .from('alimento')
-                    .delete()
-                    .eq('secuencia', secuencia);
-                if (error) throw error;
-                mensaje.textContent = '✅ Alimento eliminado correctamente';
-                mensaje.className = 'mensaje exito';
-                await cargarAlimentos();
-            } catch (err) {
-                mensaje.textContent = '❌ Error al eliminar: ' + err.message;
-                mensaje.className = 'mensaje error';
+    window.eliminarAlimento = async function(secuencia) {
+        if (!confirm('⚠️ ¿Seguro que deseas eliminar este alimento?')) return;
+        try {
+            const res = await fetch(`${API_BASE}/alimentos/${secuencia}`, {
+                method: 'DELETE'
+            });
+            if (!res.ok) {
+                const resp = await res.json();
+                throw new Error(resp.detail || 'Error al eliminar');
             }
-            setTimeout(() => mensaje.className = 'mensaje', 4000);
-        };
-
-        function resetFormulario() {
-            modoEdicion = false;
-            tituloForm.textContent = 'Agregar Nuevo Alimento';
-            btnGuardar.textContent = 'Guardar';
-            btnGuardar.className = '';
-            btnCancelar.style.display = 'none';
-            inputSecuencia.value = '';
-            form.reset();
+            mostrarMensaje('✅ Alimento eliminado correctamente', 'exito');
+            await cargarAlimentos();
+        } catch (err) {
+            mostrarMensaje('❌ Error al eliminar: ' + err.message, 'error');
         }
-    </script>
+    };
+
+    function resetFormulario() {
+        modoEdicion = false;
+        tituloForm.textContent = 'Agregar Nuevo Alimento';
+        btnGuardar.textContent = 'Guardar';
+        btnGuardar.className = '';
+        btnCancelar.style.display = 'none';
+        inputSecuencia.value = '';
+        inputVariedad.value = '';
+    }
+
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const variedad = inputVariedad.value.trim();
+        const secuencia = inputSecuencia.value;
+        
+        if (!variedad) {
+            mostrarMensaje('⚠️ Escriba la variedad del alimento', 'error');
+            return;
+        }
+        
+        btnGuardar.disabled = true;
+        btnGuardar.textContent = 'Guardando...';
+        
+        try {
+            let res;
+            if (modoEdicion && secuencia) {
+                res = await fetch(`${API_BASE}/alimentos/${secuencia}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ variedad })
+                });
+            } else {
+                res = await fetch(`${API_BASE}/alimentos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ variedad })
+                });
+            }
+            
+            if (!res.ok) {
+                const resp = await res.json();
+                throw new Error(resp.detail || 'Error al guardar');
+            }
+            
+            mostrarMensaje(modoEdicion 
+                ? '✅ Alimento actualizado correctamente' 
+                : '✅ Alimento guardado correctamente', 'exito');
+            resetFormulario();
+            await cargarAlimentos();
+        } catch (err) {
+            mostrarMensaje('❌ Error: ' + err.message, 'error');
+        } finally {
+            btnGuardar.disabled = false;
+            btnGuardar.textContent = modoEdicion ? 'Actualizar' : 'Guardar';
+        }
+    });
+
+    btnCancelar.addEventListener('click', resetFormulario);
+    document.addEventListener('DOMContentLoaded', cargarAlimentos);
+</script>
 </body>
 </html>

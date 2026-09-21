@@ -447,6 +447,59 @@ def listar_alimentos_empresa(nit: str, supabase: Client = Depends(get_supabase))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# 🍽️ ALIMENTOS
+class AlimentoCreate(BaseModel):
+    variedad: str
+
+class AlimentoUpdate(BaseModel):
+    variedad: str | None = None
+
+@app.get("/api/alimentos")
+def listar_alimentos(supabase: Client = Depends(get_supabase)):
+    try:
+        respuesta = supabase.table("alimento").select("*").order("secuencia", asc=True).execute()
+        return {"datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/alimentos")
+def crear_alimento(datos: AlimentoCreate, supabase: Client = Depends(get_supabase)):
+    try:
+        # Obtener siguiente secuencia
+        res_max = supabase.table("alimento").select("secuencia").order("secuencia", desc=True).limit(1).execute()
+        siguiente_secuencia = 1
+        if res_max.data and len(res_max.data) > 0:
+            siguiente_secuencia = res_max.data[0]["secuencia"] + 1
+        
+        registro = {"secuencia": siguiente_secuencia, "variedad": datos.variedad}
+        respuesta = supabase.table("alimento").insert(registro).execute()
+        return {"mensaje": "Alimento creado ✅", "datos": respuesta.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/alimentos/{secuencia}")
+def actualizar_alimento(secuencia: int, datos: AlimentoUpdate, supabase: Client = Depends(get_supabase)):
+    try:
+        respuesta = supabase.table("alimento")\
+            .update(datos.model_dump(exclude_unset=True))\
+            .eq("secuencia", secuencia)\
+            .execute()
+        if not respuesta.data:
+            raise HTTPException(status_code=404, detail="Alimento no encontrado")
+        return {"mensaje": "Alimento actualizado ✅", "datos": respuesta.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/alimentos/{secuencia}")
+def eliminar_alimento(secuencia: int, supabase: Client = Depends(get_supabase)):
+    try:
+        respuesta = supabase.table("alimento").delete().eq("secuencia", secuencia).execute()
+        if not respuesta.data:
+            raise HTTPException(status_code=404, detail="Alimento no encontrado")
+        return {"mensaje": "Alimento eliminado ✅"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # 🌐 Servir páginas
 @app.get("/{nombre_pagina}")
 def servir_pagina(nombre_pagina: str):
