@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Organiza - Horario Entrega</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
         body { background-color: #f0f4f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
@@ -25,7 +24,7 @@
 <body>
     <div class="contenedor">
         <h2>Datos Requeridos</h2>
-        <div id="cargando">🔐 Conectando y cargando datos...</div>
+        <div id="cargando">🔄 Cargando datos...</div>
         <div id="mensajeConteo" class="mensaje-conteo" style="display: none;"></div>
         
         <form id="formIngreso" style="display: none;">
@@ -48,17 +47,10 @@
     </div>
 
 <script>
-    const CREDENCIALES = {
-        usuario: "srchaconm@gmail.com",
-        clave: "ContraseñaSegura1"
-    };
-
-    const SUPABASE_URL = "https://swwodfpirqvwliuiswup.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
-
-    const clienteSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: { storage: localStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
-    });
+    // 🔗 Apuntamos a tu API — SIN credenciales expuestas 🔒
+    const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+        ? "http://127.0.0.1:8000/api"
+        : "/api";
 
     function mostrarError(mensaje) {
         document.getElementById('cargando').innerHTML = `<p class="error">❌ ${mensaje}</p>`;
@@ -69,42 +61,25 @@
         document.getElementById('formIngreso').style.display = 'block';
     }
 
-    async function contarEmpresas() {
+    async function cargarEmpresas() {
         try {
-            const { count, error } = await clienteSupabase
-                .from('Empresa')
-                .select('*', { count: 'exact', head: true });
-
-            if (error) throw error;
-            document.getElementById('mensajeConteo').textContent = `✅ Existen ${count} empresas registradas`;
+            const res = await fetch(`${API_BASE}/empresas`);
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            const { datos } = await res.json();
+            
+            document.getElementById('mensajeConteo').textContent = `✅ Existen ${datos.length} empresas registradas`;
             document.getElementById('mensajeConteo').style.display = 'block';
-            return true;
-        } catch (err) {
-            console.error('Error conteo:', err);
-            mostrarError(`No se pudo contar empresas: ${err.message}`);
-            return false;
-        }
-    }
-
-    async function cargarNIT() {
-        try {
-            const { data, error } = await clienteSupabase
-                .from('Empresa')
-                .select("NIT, \"Nombre Legal\"")
-                .order("NIT", { ascending: true });
-
-            if (error) throw error;
-            if (!data || data.length === 0) throw new Error("No hay empresas registradas");
-
+            
             const selectNit = document.getElementById('nit');
             selectNit.innerHTML = '<option value="">Seleccione una empresa</option>';
-            data.forEach(item => {
+            datos.forEach(item => {
                 let opcion = document.createElement('option');
                 opcion.value = item.NIT;
                 opcion.textContent = `${item.NIT} - ${item["Nombre Legal"] || 'Sin nombre'}`;
                 selectNit.appendChild(opcion);
             });
 
+            // Al cambiar empresa → cargar sucursales
             selectNit.addEventListener('change', async function() {
                 const selectSuc = document.getElementById('sucursal');
                 if (this.value) {
@@ -118,67 +93,45 @@
 
             return true;
         } catch (err) {
-            console.error('Error cargar empresas:', err);
-            mostrarError(`Error al cargar empresas: ${err.message}`);
+            console.error('Error:', err);
+            mostrarError(`No se pudieron cargar empresas: ${err.message}`);
             return false;
         }
     }
 
-    async function cargarSucursales(nitEmpresa = null) {
+    async function cargarSucursales(nitEmpresa) {
         try {
-            const { data, error } = await clienteSupabase
-                .from('Sucursal')
-                .select("Sucursal, Localización")
-                .eq('NIT', nitEmpresa)
-                .order("Sucursal", { ascending: true });
-
-            if (error) throw error;
-
+            const res = await fetch(`${API_BASE}/sucursales?nit=${encodeURIComponent(nitEmpresa)}`);
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            const { datos } = await res.json();
+            
             const selectSucursal = document.getElementById('sucursal');
             selectSucursal.innerHTML = '<option value="">Seleccione una sucursal</option>';
             
-            data.forEach(item => {
+            if (!datos.length) {
+                alert("⚠️ Esta empresa no tiene sucursales registradas");
+                return;
+            }
+            
+            datos.forEach(item => {
                 let opcion = document.createElement('option');
                 opcion.value = item.Sucursal;
-                opcion.textContent = `${item.Sucursal} - ${item.Localización || 'Sin ubicación'}`;
+                opcion.textContent = `${item.Sucursal} - ${item["Localización"] || 'Sin ubicación'}`;
                 selectSucursal.appendChild(opcion);
             });
-
-            return true;
         } catch (err) {
             console.error('Error Sucursales:', err);
             alert(`Error al cargar sucursales: ${err.message}`);
-            return false;
         }
     }
 
-    async function iniciarProceso() {
-        try {
-            // Primero revisamos si ya hay sesión
-            const { data: { session } } = await clienteSupabase.auth.getSession();
-            
-            if (!session) {
-                document.getElementById('cargando').innerHTML = "🔑 Iniciando sesión...";
-                const { error } = await clienteSupabase.auth.signInWithPassword({
-                    email: CREDENCIALES.usuario,
-                    password: CREDENCIALES.clave
-                });
-                if (error) throw new Error(`Sesión: ${error.message}`);
-            }
-
-            document.getElementById('cargando').innerHTML = "📊 Cargando empresas...";
-            await contarEmpresas();
-            const ok = await cargarNIT();
-
-            if (ok) mostrarFormulario();
-
-        } catch (err) {
-            mostrarError(err.message);
-            console.error('Fallo total:', err);
-        }
+    async function iniciar() {
+        document.getElementById('cargando').innerHTML = "📊 Cargando empresas...";
+        const ok = await cargarEmpresas();
+        if (ok) mostrarFormulario();
     }
 
-    window.addEventListener('load', iniciarProceso);
+    window.addEventListener('load', iniciar);
 
     const form = document.getElementById('formIngreso');
     form.addEventListener('submit', function(e) {
@@ -186,14 +139,23 @@
         const nit = document.getElementById('nit').value;
         const sucursal = document.getElementById('sucursal').value;
         let valido = true;
-
-        if (!nit) { document.getElementById('errorNit').style.display = 'block'; valido = false; }
-        else { document.getElementById('errorNit').style.display = 'none'; }
-
-        if (!sucursal) { document.getElementById('errorSucursal').style.display = 'block'; valido = false; }
-        else { document.getElementById('errorSucursal').style.display = 'none'; }
-
+        
+        if (!nit) { 
+            document.getElementById('errorNit').style.display = 'block'; 
+            valido = false; 
+        } else { 
+            document.getElementById('errorNit').style.display = 'none'; 
+        }
+        
+        if (!sucursal) { 
+            document.getElementById('errorSucursal').style.display = 'block'; 
+            valido = false; 
+        } else { 
+            document.getElementById('errorSucursal').style.display = 'none'; 
+        }
+        
         if (valido) {
+            // ✅ Redirige a la página de horarios con los parámetros
             window.location.href = `MantenimientoHorarioEntrega.html?nit=${encodeURIComponent(nit)}&sucursal=${encodeURIComponent(sucursal)}`;
         }
     });

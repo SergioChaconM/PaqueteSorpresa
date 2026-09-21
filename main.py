@@ -237,6 +237,88 @@ def eliminar_sucursal(nit: str, numero: int, supabase: Client = Depends(get_supa
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# 🕒 HORARIOS DE ENTREGA — Tabla: HorarioEntrega
+class HorarioEntregaCreate(BaseModel):
+    nit: str
+    sucursal: int
+    grupo: int
+    entrega: str | None = None
+
+class HorarioEntregaUpdate(BaseModel):
+    entrega: str | None = None
+
+@app.get("/api/horarios")
+def listar_horarios(nit: str | None = None, sucursal: int | None = None, supabase: Client = Depends(get_supabase)):
+    """Listar horarios filtrados por NIT y Sucursal si se proporcionan"""
+    try:
+        consulta = supabase.table("HorarioEntrega").select("*")
+        if nit:
+            consulta = consulta.eq("nit", nit)
+        if sucursal is not None:
+            consulta = consulta.eq("sucursal", sucursal)
+        respuesta = consulta.order("grupo").execute()
+        return {"datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/horarios")
+def crear_horario(datos: HorarioEntregaCreate, supabase: Client = Depends(get_supabase)):
+    """Crear nuevo horario — valida grupo duplicado"""
+    try:
+        respuesta = supabase.table("HorarioEntrega").insert(datos.model_dump()).execute()
+        return {"mensaje": "Horario registrado ✅", "datos": respuesta.data[0]}
+    except Exception as e:
+        error_msg = str(e)
+        if "duplicate key" in error_msg.lower() or "23505" in error_msg:
+            raise HTTPException(
+                status_code=409,
+                detail=f"El Grupo {datos.grupo} ya existe para esta sucursal"
+            )
+        raise HTTPException(status_code=500, detail=error_msg)
+
+@app.put("/api/horarios/{nit}/{sucursal}/{grupo}")
+def actualizar_horario(
+    nit: str,
+    sucursal: int,
+    grupo: int,
+    datos: HorarioEntregaUpdate,
+    supabase: Client = Depends(get_supabase)
+):
+    """Actualizar solo la descripción de entrega — clave compuesta no cambia"""
+    try:
+        respuesta = supabase.table("HorarioEntrega")\
+            .update(datos.model_dump(exclude_unset=True))\
+            .eq("nit", nit)\
+            .eq("sucursal", sucursal)\
+            .eq("grupo", grupo)\
+            .execute()
+        if not respuesta.data:
+            raise HTTPException(status_code=404, detail="Registro no encontrado")
+        return {"mensaje": "Horario actualizado ✅", "datos": respuesta.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/horarios/{nit}/{sucursal}/{grupo}")
+def eliminar_horario(
+    nit: str,
+    sucursal: int,
+    grupo: int,
+    supabase: Client = Depends(get_supabase)
+):
+    """Eliminar horario por clave compuesta completa"""
+    try:
+        respuesta = supabase.table("HorarioEntrega")\
+            .delete()\
+            .eq("nit", nit)\
+            .eq("sucursal", sucursal)\
+            .eq("grupo", grupo)\
+            .execute()
+        if not respuesta.data:
+            raise HTTPException(status_code=404, detail="Registro no encontrado")
+        return {"mensaje": "Horario eliminado ✅"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # 🌐 Servir páginas
 @app.get("/{nombre_pagina}")
 def servir_pagina(nombre_pagina: str):
