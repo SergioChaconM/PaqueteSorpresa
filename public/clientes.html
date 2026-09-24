@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paquetes Disponibles Hoy</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: linear-gradient(135deg, #fff9e6 0%, #ffe4b5 100%); min-height: 100vh; padding: 30px 20px; }
+        .volver { display: block; text-align: center; margin-bottom: 20px; color: #ff6b35; text-decoration: none; font-weight: bold; }
+        .volver:hover { color: #e85d2b; }
+        h1 { text-align: center; color: #8B4513; margin-bottom: 20px; font-size: 2.2rem; }
+        .contador { text-align: center; background: white; max-width: 450px; margin: 0 auto 30px; padding: 15px 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(139,69,19,.15); color: #8B4513; font-size: 1.1rem; }
+        .contador strong { color: #D2691E; font-size: 1.4rem; }
+        .contenedor { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; max-width: 1200px; margin: 0 auto; }
+        .tarjeta { border: none; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 15px rgba(139,69,19,.2); background: white; transition: transform 0.2s ease; }
+        .tarjeta:hover { transform: translateY(-4px); }
+        .img-alimento { width: 100%; height: 180px; object-fit: cover; background: #fff3e0; }
+        .cuerpo { padding: 18px; background: linear-gradient(to bottom, #fff8e1, #ffecb3); }
+        .nombre { font-size: 1rem; color: #5D4037; font-weight: 600; margin-bottom: 10px; }
+        .cantidad { display: inline-block; padding: 5px 14px; background: #FFCC80; color: #5D4037; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-right: 8px; }
+        .sin-paquetes { background: #E0E0E0; color: #757575; }
+        .enlace-ver { display: inline-block; padding: 5px 14px; background: #ff6b35; color: white !important; border-radius: 20px; font-size: 0.85rem; font-weight: bold; text-decoration: none; transition: background 0.2s ease; }
+        .enlace-ver:hover { background: #e85d2b; }
+        .vacio { text-align: center; color: #8B4513; font-size: 1.1rem; padding: 60px 30px; grid-column: 1/-1; }
+        .error { color: #c62828; background: #ffebee; padding: 15px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="volver">← Volver al Inicio</a>
+    <h1>🍽️ Paquetes Disponibles Hoy</h1>
+    <div class="contador" id="contadorTotal">Cargando...</div>
+    <div class="contenedor" id="contenedorTarjetas"></div>
+
+    <script>
+window.addEventListener('load', async () => {
+    const SUPABASE_URL = 'https://swwodfpirqvwliuiswup.supabase.co';
+    const SUPABASE_KEY = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
+    
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: { storage: localStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
+    });
+
+    const BASE_URL = "https://swwodfpirqvwliuiswup.supabase.co/storage/v1/object/public/Imagenes/";
+    
+    const IMAGENES = {
+        pizza: BASE_URL + "pizza.jpg",
+        hamburguesa: BASE_URL + "hamburguesa.jpg",
+        pollo: BASE_URL + "pollo.jpg",
+        pasta: BASE_URL + "pasta.jpg",
+        hotdog: BASE_URL + "hotdog.jpg",
+        panaderia: BASE_URL + "panaderia.jpg",
+        reposteria: BASE_URL + "reposteria.jpg",
+        ensalada: BASE_URL + "ensalada.jpg",
+        bebida: BASE_URL + "bebidas.jpg",
+        taco: BASE_URL + "taco.jpg",
+        sandwich: BASE_URL + "sandwich.jpg",
+        asados: BASE_URL + "asados.jpg",
+        mariscos: BASE_URL + "mariscos.jpg",
+        pavo: BASE_URL + "Pavo.jpg",
+        fruta: BASE_URL + "fruta.jpg",
+        verdura: BASE_URL + "verdura.jpg",
+        default: BASE_URL + "default.jpg"
+    };
+
+    const CATEGORIAS = [
+        { claves: ['pizza'], img: IMAGENES.pizza },
+        { claves: ['hamburguesa','burger'], img: IMAGENES.hamburguesa },
+        { claves: ['pollo','frito'], img: IMAGENES.pollo },
+        { claves: ['pasta','lasaña','espagueti'], img: IMAGENES.pasta },
+        { claves: ['hotdog','hot dog','perro caliente','shuco','shucos'], img: IMAGENES.hotdog },
+        { claves: ['panaderia','panadería','pan'], img: IMAGENES.panaderia },
+        { claves: ['reposteria','repostería','dulce','postre'], img: IMAGENES.reposteria },
+        { claves: ['ensalada'], img: IMAGENES.ensalada },
+        { claves: ['bebida','refresco','jugo','agua'], img: IMAGENES.bebida },
+        { claves: ['taco'], img: IMAGENES.taco },
+        { claves: ['sandwich','sándwich'], img: IMAGENES.sandwich },
+        { claves: ['asado','carne asada'], img: IMAGENES.asados },
+        { claves: ['marisco','mariscos','pescado'], img: IMAGENES.mariscos },
+        { claves: ['pavo'], img: IMAGENES.pavo },
+        { claves: ['fruta','frutas','mango','banano','plátano','manzana'], img: IMAGENES.fruta },
+        { claves: ['verdura','verduras','vegetal'], img: IMAGENES.verdura }
+    ];
+
+    function imagenPorVariedad(variedad) {
+        const texto = (variedad || '').toLowerCase();
+        for (const cat of CATEGORIAS) {
+            for (const clave of cat.claves) {
+                if (texto.includes(clave)) return cat.img;
+            }
+        }
+        return IMAGENES.default;
+    }
+
+    function obtenerFechaHoy() {
+        const fecha = new Date();
+        const guatemala = new Date(fecha.getTime() - 6 * 60 * 60 * 1000);
+        return guatemala.toISOString().split('T')[0];
+    }
+
+    async function ejecutarConsulta() {
+        const hoy = obtenerFechaHoy();
+        try {
+            const { data: paquetes, error: errP } = await sb
+                .from('PaqueteOferton')
+                .select('NIT, secuencia')
+                .eq('DiaPromoción', hoy)
+                .eq('Estado', 'D');
+            
+            if (errP) throw errP;
+            if (!paquetes || paquetes.length === 0) return { total: 0, grupos: [] };
+            
+            const nitsUnicos = [...new Set(paquetes.map(p => p.NIT))];
+            const { data: empresas, error: errE } = await sb
+                .from('empresalimento')
+                .select('nit, secuencia')
+                .in('nit', nitsUnicos);
+            
+            if (errE) throw errE;
+            if (!empresas || empresas.length === 0) return { total: paquetes.length, grupos: [] };
+            
+            const secuencias = [...new Set(empresas.map(e => e.secuencia).filter(Boolean))];
+            const { data: alimentos, error: errA } = await sb
+                .from('alimento')
+                .select('secuencia, variedad')
+                .in('secuencia', secuencias);
+            
+            if (errA) throw errA;
+            
+            const mapaVariedad = {};
+            alimentos?.forEach(a => { mapaVariedad[a.secuencia] = a.variedad || "Desconocido"; });
+            
+            const conteo = {};
+            paquetes.forEach(p => {
+                if (!conteo[p.secuencia]) {
+                    conteo[p.secuencia] = { 
+                        secuencia: p.secuencia, 
+                        variedad: mapaVariedad[p.secuencia] || "Desconocido", 
+                        cantidad: 0 
+                    };
+                }
+                conteo[p.secuencia].cantidad++;
+            });
+            
+            return { total: paquetes.length, grupos: Object.values(conteo) };
+        } catch (e) {
+            return { total: 0, grupos: [], error: e.message || "Error desconocido" };
+        }
+    }
+
+    async function mostrar() {
+        const contenedor = document.getElementById('contenedorTarjetas');
+        const res = await ejecutarConsulta();
+        
+        document.getElementById('contadorTotal').innerHTML =
+            `📦 Paquetes disponibles hoy: <strong>${res.total}</strong>`;
+        
+        if (res.error) {
+            contenedor.innerHTML = `<div class="vacio error">❌ ${res.error}</div>`;
+            return;
+        }
+        
+        if (!res.grupos.length) {
+            contenedor.innerHTML = `<div class="vacio">😕 No hay paquetes disponibles hoy.<br>Verifica la fecha o el Estado = "D".</div>`;
+            return;
+        }
+        
+        contenedor.innerHTML = '';
+        for (const item of res.grupos) {
+            const img = imagenPorVariedad(item.variedad);
+            const cls = item.cantidad === 0 ? 'sin-paquetes' : '';
+            const urlDestino = `detalle/?secuencia=${encodeURIComponent(item.secuencia)}`;
+            
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'tarjeta';
+            tarjeta.innerHTML = `
+                <img src="${img}" class="img-alimento" alt="${item.variedad}" loading="lazy">
+                <div class="cuerpo">
+                    <div class="nombre">🍽️ ${item.variedad}</div>
+                    <div>
+                        <span class="cantidad ${cls}">📦 Paquetes: ${item.cantidad}</span>
+                        <a class="enlace-ver" href="${urlDestino}">Ver →</a>
+                    </div>
+                </div>`;
+            contenedor.appendChild(tarjeta);
+        }
+    }
+
+    await mostrar();
+});
+    </script>
+</body>
+</html>
