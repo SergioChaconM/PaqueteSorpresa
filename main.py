@@ -538,13 +538,12 @@ def actualizar_precio(
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================================================
-# 🍽️ ALIMENTOS — PROTEGIDAS
+# 🍽️ ALIMENTOS — ACCESO LIBRE TEMPORALMENTE ✅
 # ==================================================
 @app.get("/api/alimentos-por-empresa")
 def listar_alimentos_empresa(
     nit: str,
     supabase: Client = Depends(get_supabase),
-    _: UsuarioActual = Depends(obtener_usuario_actual)
 ):
     try:
         res_rel = supabase.table("empresalimento").select("secuencia").eq("nit", nit).order("secuencia", asc=True).execute()
@@ -554,26 +553,24 @@ def listar_alimentos_empresa(
         res_alim = supabase.table("alimento").select("secuencia, variedad").in_("secuencia", secuencias).order("secuencia", asc=True).execute()
         return {"datos": res_alim.data}
     except Exception as e:
-        print(f"🔴 Error alimentos por empresa: {e}")  # ← NUEVO
+        print(f"🔴 Error alimentos por empresa: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/alimentos")
 def listar_alimentos(
     supabase: Client = Depends(get_supabase),
-    _: UsuarioActual = Depends(obtener_usuario_actual)
 ):
     try:
         respuesta = supabase.table("alimento").select("*").order("secuencia", asc=True).execute()
         return {"datos": respuesta.data}
     except Exception as e:
-        print(f"🔴 Error listar alimentos: {e}")  # ← NUEVO
+        print(f"🔴 Error listar alimentos: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/alimentos")
 def crear_alimento(
     datos: AlimentoCreate,
     supabase: Client = Depends(get_supabase),
-    _: UsuarioActual = Depends(obtener_usuario_actual)
 ):
     try:
         res_max = supabase.table("alimento").select("secuencia").order("secuencia", desc=True).limit(1).execute()
@@ -582,14 +579,13 @@ def crear_alimento(
         respuesta = supabase.table("alimento").insert(registro).execute()
         return {"mensaje": "Alimento creado ✅", "datos": respuesta.data[0]}
     except Exception as e:
-        print(f"🔴 Error crear alimento: {e}")  # ← NUEVO
+        print(f"🔴 Error crear alimento: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/api/alimentos/{secuencia}")
 def actualizar_alimento(
     secuencia: int, datos: AlimentoUpdate,
     supabase: Client = Depends(get_supabase),
-    _: UsuarioActual = Depends(obtener_usuario_actual)
 ):
     try:
         respuesta = supabase.table("alimento").update(datos.model_dump(exclude_unset=True)).eq("secuencia", secuencia).execute()
@@ -597,14 +593,13 @@ def actualizar_alimento(
             raise HTTPException(status_code=404, detail="Alimento no encontrado")
         return {"mensaje": "Alimento actualizado ✅", "datos": respuesta.data[0]}
     except Exception as e:
-        print(f"🔴 Error actualizar alimento: {e}")  # ← NUEVO
+        print(f"🔴 Error actualizar alimento: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/alimentos/{secuencia}")
 def eliminar_alimento(
     secuencia: int,
     supabase: Client = Depends(get_supabase),
-    _: UsuarioActual = Depends(solo_admin)
 ):
     try:
         respuesta = supabase.table("alimento").delete().eq("secuencia", secuencia).execute()
@@ -612,7 +607,7 @@ def eliminar_alimento(
             raise HTTPException(status_code=404, detail="Alimento no encontrado")
         return {"mensaje": "Alimento eliminado ✅"}
     except Exception as e:
-        print(f"🔴 Error eliminar alimento: {e}")  # ← NUEVO
+        print(f"🔴 Error eliminar alimento: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================================================
