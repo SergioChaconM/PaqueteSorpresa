@@ -433,7 +433,9 @@
     });
 
     // ↩️ Botón Volver
-    document.getElementById('btnVolver').onclick = () => history.back();
+    document.getElementById('btnVolver').onclick = () => {
+ 							window.location.href = 'index.html';
+							};
 
     // 🚀 Iniciar todo
     window.addEventListener('load', async () => {

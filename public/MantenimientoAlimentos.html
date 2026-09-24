@@ -117,7 +117,9 @@
     </style>
 </head>
 <body>
-    <a href="javascript:history.back()" class="boton-volver">← Volver</a>
+    <!-- ✅ Ruta corregida hacia index.html -->
+    <a href="index.html" class="boton-volver">← Volver</a>
+    
     <h1>🥗 Mantenimiento de Alimentos</h1>
     <div class="card">
         <h2 id="tituloForm">Agregar Nuevo Alimento</h2>
@@ -146,11 +148,11 @@
     </div>
 
 <script>
-    // 🔗 API — SIN credenciales expuestas 🔒
+    // 🔗 Rutas API configuradas automáticamente
     const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
         ? "http://127.0.0.1:8000/api"
         : "/api";
-
+    
     const form = document.getElementById('formAlimento');
     const lista = document.getElementById('listaAlimentos');
     const mensaje = document.getElementById('mensaje');
@@ -159,6 +161,7 @@
     const inputVariedad = document.getElementById('variedad');
     const btnGuardar = document.getElementById('btnGuardar');
     const btnCancelar = document.getElementById('btnCancelar');
+    
     let modoEdicion = false;
 
     function mostrarMensaje(texto, tipo) {
@@ -173,7 +176,7 @@
             if (!res.ok) throw new Error(`Error ${res.status}`);
             const { datos } = await res.json();
             
-            if (datos.length === 0) {
+            if (!datos || datos.length === 0) {
                 lista.innerHTML = '<tr><td colspan="3">Sin registros aún.</td></tr>';
                 return;
             }
@@ -190,6 +193,7 @@
             `).join('');
         } catch (err) {
             lista.innerHTML = `<tr><td colspan="3">❌ Error: ${err.message}</td></tr>`;
+            console.error('Detalles del error:', err);
         }
     }
 

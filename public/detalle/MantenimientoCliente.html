@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mantenimiento Clientes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            background-image: url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        .zona-datos {
+            background: rgba(255,255,255,0.97);
+            border-radius: 12px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .encabezado-pagina {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 1.5rem;
+        }
+        .btn-volver {
+            background-color: #64748b;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-volver:hover { background-color: #475569; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 0.5rem 0.4rem;
+            text-align: left;
+            vertical-align: middle;
+            font-size: 0.9rem;
+        }
+        th { background: #f3f4f6; font-weight: 600; }
+        th:nth-child(1), td:nth-child(1) { width: 10%; }
+        th:nth-child(2), td:nth-child(2) { width: 22%; }
+        th:nth-child(3), td:nth-child(3) { width: 15%; }
+        th:nth-child(4), td:nth-child(4) { width: 18%; }
+        th:nth-child(5), td:nth-child(5) { width: 25%; }
+        th:nth-child(6), td:nth-child(6) { width: 10%; text-align: center; }
+        tbody tr:nth-child(even) { background-color: #ffffff; }
+        tbody tr:nth-child(odd)  { background-color: #f8f0fc; }
+        tbody tr:hover           { background-color: #f3e5f5; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-6">
+    <div class="zona-datos p-6 md:p-8">
+        <div class="encabezado-pagina">
+            <button type="button" class="btn-volver" onclick="window.location.href='index.html'">← Volver</button>
+            <h1 class="text-2xl font-bold text-gray-800">Mantenimiento de Clientes</h1>
+        </div>
+        <div class="mb-8 p-5 bg-white/70 rounded-lg border border-gray-200">
+            <h2 class="text-xl font-semibold mb-4" id="formTitulo">Agregar Nuevo Cliente</h2>
+            <form id="clienteForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+	            <div class="md:col-span-2">
+		            <label class="block text-sm font-medium text-gray-700 mb-1">Nombre Cliente *</label>
+		            <input type="text" id="nombreCliente" required 
+			            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	            </div>
+	            <div>
+		            <label class="block text-sm font-medium text-gray-700 mb-1">Código País *</label>
+		            <select id="codigoPais" required disabled
+			            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed">
+			            <option value="502" selected>Guatemala (+502)</option>
+		            </select>
+	            </div>
+	            <div>
+		            <label class="block text-sm font-medium text-gray-700 mb-1">Celular *</label>
+		            <input type="text" id="celular" required 
+			            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	            </div>
+	            <div>
+		            <label class="block text-sm font-medium text-gray-700 mb-1">NIT Cliente</label>
+		            <input type="text" id="nitCliente" value="C/F" 
+			            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	            </div>
+	            <div>
+		            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+		            <input type="email" id="emailCliente" 
+			            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	            </div>
+                <div class="md:col-span-2 flex gap-3 mt-2">
+                    <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 transition">Guardar</button>
+                    <button type="button" id="btnCancelar" class="bg-gray-500 text-white px-5 py-2 rounded-md hover:bg-gray-600 transition hidden">Cancelar</button>
+                </div>
+            </form>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 text-left">
+                        <th>Código País</th>
+                        <th>Nombre</th>
+                        <th>Celular</th>
+                        <th>NIT Cliente</th>
+                        <th>Email</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaClientes"></tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        const SUPABASE_URL = "https://swwodfpirqvwliuiswup.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
+        const NOMBRE_TABLA = "cliente";
+        const clienteSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: { storage: localStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
+        });
+        
+        const form = document.getElementById('clienteForm');
+        const tablaCuerpo = document.getElementById('tablaClientes');
+        const formTitulo = document.getElementById('formTitulo');
+        const btnCancelar = document.getElementById('btnCancelar');
+        const inputNombre = document.getElementById('nombreCliente');
+        const inputCodigo = document.getElementById('codigoPais');
+        const inputCelular = document.getElementById('celular');
+        const inputNit = document.getElementById('nitCliente');
+        const inputEmail = document.getElementById('emailCliente');
+        
+        let modoEdicion = false, codigoOriginal = null, celularOriginal = null;
+
+        // Limpieza de celular: solo números, máximo 15 dígitos
+        inputCelular.addEventListener('input', () => {
+            inputCelular.value = inputCelular.value.replace(/\D/g, '').slice(0, 15);
+        });
+
+        // Quita espacios extra y caracteres invisibles
+        function limpiarTexto(texto) {
+            if (!texto && texto !== 0) return "";
+            return String(texto).trim().replace(/\s+/g, '');
+        }
+
+        async function cargarClientes() {
+            const { data, error } = await clienteSupabase
+                .from(NOMBRE_TABLA)
+                .select('*')
+                .order('"Nombre"', { ascending: true });
+            
+            if (error) { 
+                alert(`Error al cargar: ${error.message}`); 
+                return; 
+            }
+            
+            tablaCuerpo.innerHTML = '';
+            if (!data || data.length === 0) {
+                tablaCuerpo.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500">No hay registros</td></tr>`;
+                return;
+            }
+            
+            data.forEach(cliente => {
+                const fila = document.createElement('tr');
+                // Guardamos valores limpios para búsquedas
+                fila.dataset.codigoPais = limpiarTexto(cliente["Código País"]);
+                fila.dataset.celular = limpiarTexto(cliente["Celular"]);
+                
+                fila.innerHTML = `
+                    <td>${cliente["Código País"]}</td>
+                    <td>${cliente["Nombre"] || '-'}</td>
+                    <td>${cliente["Celular"]}</td>
+                    <td>${cliente["NIT Cliente"]}</td>
+                    <td>${cliente.Email || '-'}</td>
+                    <td class="text-center">
+                        <button onclick="editarCliente(this.closest('tr'))" class="text-yellow-600 hover:text-yellow-800 mr-3 font-medium">Editar</button>
+                        <button onclick="eliminarCliente(this.closest('tr'))" class="text-red-600 hover:text-red-800 font-medium">Eliminar</button>
+                    </td>`;
+                tablaCuerpo.appendChild(fila);
+            });
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const codPais = 502;
+            const celularLimpio = limpiarTexto(inputCelular.value);
+            
+            const datosCliente = {
+                "Nombre": inputNombre.value.trim(),
+                "Código País": codPais,
+                "Celular": celularLimpio,
+                "NIT Cliente": inputNit.value.trim() || 'C/F',
+                "Email": inputEmail.value.trim() || null
+            };
+            
+            let resultado;
+            if (modoEdicion && codigoOriginal !== null && celularOriginal !== null) {
+                // Actualizar
+                resultado = await clienteSupabase
+                    .from(NOMBRE_TABLA)
+                    .update(datosCliente)
+                    .eq('"Código País"', codigoOriginal)
+                    .eq('"Celular"', celularOriginal);
+            } else {
+                // Insertar nuevo
+                resultado = await clienteSupabase
+                    .from(NOMBRE_TABLA)
+                    .insert([datosCliente]);
+            }
+            
+            if (resultado.error) { 
+                alert(`Error al guardar: ${resultado.error.message}`); 
+                console.error("❌ Error:", resultado.error);
+                return; 
+            }
+            
+            alert(modoEdicion ? '✅ Cliente actualizado correctamente' : '✅ Cliente agregado correctamente');
+            resetearFormulario();
+            cargarClientes();
+        });
+
+        async function editarCliente(fila) {
+            const codigo = parseInt(fila.dataset.codigoPais);
+            const celular = fila.dataset.celular;
+            
+            const { data, error } = await clienteSupabase
+                .from(NOMBRE_TABLA)
+                .select('*')
+                .eq('"Código País"', codigo)
+                .eq('"Celular"', celular)
+                .single();
+            
+            if (error) { 
+                alert(`Error al cargar datos: ${error.message}`); 
+                return; 
+            }
+            
+            modoEdicion = true;
+            codigoOriginal = codigo;
+            celularOriginal = celular;
+            
+            formTitulo.textContent = 'Editar Cliente'; 
+            btnCancelar.classList.remove('hidden');
+            
+            inputNombre.value = data["Nombre"] || '';
+            inputCodigo.value = data["Código País"];
+            inputCelular.value = data["Celular"];
+            inputNit.value = data["NIT Cliente"];
+            inputEmail.value = data.Email || '';
+        }
+
+        async function eliminarCliente(fila) {
+            if (!confirm('⚠️ ¿Seguro que deseas ELIMINAR este cliente?\nEsta acción no se puede deshacer.')) {
+                return;
+            }
+            
+            // ✅ TOMAMOS LOS VALORES DE LA FILA SELECCIONADA
+            const codPais = parseInt(fila.dataset.codigoPais);
+            const celular = fila.dataset.celular;
+            
+            console.log("🗑️ BORRANDO → País:", codPais, "| Celular:", celular);
+            
+            const { error, data } = await clienteSupabase
+                .from(NOMBRE_TABLA)
+                .delete()
+                .eq('"Código País"', codPais)
+                .eq('"Celular"', celular)
+                .select();
+            
+            if (error) {
+                console.error("❌ Error:", error);
+                alert(`❌ Error al eliminar:\n${error.message}`);
+                return;
+            }
+            
+            if (!data || data.length === 0) {
+                alert("⚠️ No se encontró el registro para eliminar. Revisa las Políticas de Seguridad (RLS) en Supabase.");
+                console.log("📋 Respuesta:", { error, data });
+                return;
+            }
+            
+            alert("✅ Cliente ELIMINADO correctamente.");
+            await cargarClientes();
+        }
+
+        function resetearFormulario() {
+            form.reset(); 
+            inputNit.value = 'C/F'; 
+            inputEmail.value = '';
+            modoEdicion = false;
+            codigoOriginal = null;
+            celularOriginal = null;
+            formTitulo.textContent = 'Agregar Nuevo Cliente'; 
+            btnCancelar.classList.add('hidden');
+        }
+
+        btnCancelar.addEventListener('click', resetearFormulario);
+        
+        // Cargar datos al iniciar
+        cargarClientes();
+    </script>
+</body>
+</html>
