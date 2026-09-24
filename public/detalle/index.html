@@ -14,10 +14,13 @@
         .atras:hover { color: #e85d2b; }
         h2 { color: #8B4513; margin-bottom: 25px; text-align: center; }
         .dato { margin: 12px 0; padding: 12px 15px; background: #fff8e1; border-radius: 8px; }
-        .etiqueta { font-weight: bold; color: #5D4037; display: inline-block; min-width: 140px; }
+        .etiqueta { font-weight: bold; color: #5D4037; display: inline-block; min-width: 160px; }
         .error { color: #c62828; background: #ffebee; padding: 20px; border-radius: 10px; text-align: center; }
         .cargando { text-align: center; color: #8B4513; padding: 40px; }
         .img-principal { width: 100%; height: 250px; object-fit: cover; border-radius: 12px; margin-bottom: 20px; background: #fff3e0; }
+        .vigente { display: inline-block; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; }
+        .vigente.si { background: #c8e6c9; color: #2e7d32; }
+        .vigente.no { background: #ffcdd2; color: #c62828; }
     </style>
 </head>
 <body>
@@ -47,7 +50,6 @@ window.addEventListener('load', async () => {
         return;
     }
 
-    // Seleccionar imagen según la variedad
     function imagenPorVariedad(variedad) {
         const IMAGENES = {
             pizza: BASE_URL + "pizza.jpg",
@@ -89,7 +91,7 @@ window.addEventListener('load', async () => {
     }
 
     try {
-        // Datos del alimento
+        // 1. Datos del alimento
         const { data: alimento, error: errA } = await sb
             .from('alimento')
             .select('*')
@@ -98,13 +100,27 @@ window.addEventListener('load', async () => {
         
         if (errA) throw errA;
 
-        // Datos de la empresa
-        const { data: empresas, error: errE } = await sb
+        // 2. Obtener NIT desde empresalimento
+        const { data: relacion, error: errRel } = await sb
             .from('empresalimento')
-            .select('*')
-            .eq('secuencia', secuencia);
+            .select('nit')
+            .eq('secuencia', secuencia)
+            .limit(1)
+            .single();
         
-        // Paquetes disponibles hoy
+        if (errRel) throw errRel;
+        const nit = relacion.nit;
+
+        // 3. Datos de la empresa
+        const { data: empresa, error: errEmp } = await sb
+            .from('Empresa')
+            .select('*')
+            .eq('NIT', nit)
+            .single();
+        
+        if (errEmp) throw errEmp;
+
+        // 4. Contar paquetes disponibles hoy
         const hoy = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString().split('T')[0];
         const { data: paquetes, error: errP } = await sb
             .from('PaqueteOferton')
@@ -114,36 +130,44 @@ window.addEventListener('load', async () => {
             .eq('Estado', 'D');
 
         const img = imagenPorVariedad(alimento.variedad);
-        const empresa = empresas && empresas.length > 0 ? empresas[0] : null;
         const cantidad = paquetes ? paquetes.length : 0;
         
         const contenedor = document.getElementById('contenido');
         contenedor.innerHTML = `
             <img src="${img}" class="img-principal" alt="${alimento.variedad}">
-            <h2>🍽️ ${alimento.variedad || 'Alimento'}</h2>
+            <h2>🍽️ ${alimento.variedad}</h2>
             
             <div class="dato">
                 <span class="etiqueta">📦 Paquetes disponibles:</span>
                 <strong>${cantidad}</strong>
             </div>
             
-            ${empresa?.nombre ? `
             <div class="dato">
-                <span class="etiqueta">🏢 Empresa:</span>
-                ${empresa.nombre}
-            </div>` : ''}
+                <span class="etiqueta">🏢 Nombre Comercial:</span>
+                ${empresa['Nombre Comercial'] || empresa['Nombre Legal']}
+            </div>
             
-            ${empresa?.direccion ? `
             <div class="dato">
-                <span class="etiqueta">📍 Dirección:</span>
-                ${empresa.direccion}
-            </div>` : ''}
+                <span class="etiqueta">📋 NIT:</span>
+                ${empresa.NIT}
+            </div>
             
-            ${empresa?.telefono ? `
             <div class="dato">
-                <span class="etiqueta">📞 Teléfono:</span>
-                ${empresa.telefono}
-            </div>` : ''}
+                <span class="etiqueta">👤 Contacto Principal:</span>
+                ${empresa['Contacto Principal'] || 'No especificado'}
+            </div>
+            
+            <div class="dato">
+                <span class="etiqueta">📧 Correo:</span>
+                ${empresa.correorepresentante || 'No especificado'}
+            </div>
+            
+            <div class="dato">
+                <span class="etiqueta">✅ Estado:</span>
+                <span class="vigente ${empresa.Vigente ? 'si' : 'no'}">
+                    ${empresa.Vigente ? 'Vigente' : 'No vigente'}
+                </span>
+            </div>
             
             <div class="dato">
                 <span class="etiqueta">🔢 Secuencia:</span>
