@@ -784,7 +784,7 @@ def listar_sucursales_paquetes_anteriores(
         if not paquetes:
             return {"datos": [], "fecha_hoy": hoy}
         nits_unicos = list({p["NIT"] for p in paquetes})
-        res_empresas = supabase.table("Empresa").select('NIT, '"Nombre Comercial"', '"Nombre Legal"').in_("NIT", nits_unicos).execute()
+        res_empresas = supabase.table("Empresa").select(NIT, '"Nombre Comercial"', '"Nombre Legal"').in_("NIT", nits_unicos).execute()
         empresas = res_empresas.data or []
         res_sucursales = supabase.table("Sucursal").select("NIT, Sucursal, Localización").execute()
         sucursales = res_sucursales.data or []
