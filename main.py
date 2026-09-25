@@ -540,31 +540,17 @@ def actualizar_precio(
 # ==================================================
 # 🍽️ ALIMENTOS — ACCESO LIBRE TEMPORALMENTE ✅
 # ==================================================
-@app.get("/api/alimentos-por-empresa")
-def listar_alimentos_empresa(
-    nit: str,
-    supabase: Client = Depends(get_supabase),
-):
-    try:
-        res_rel = supabase.table("empresalimento").select("secuencia").eq("nit", nit).order("secuencia", asc=True).execute()
-        secuencias = [r["secuencia"] for r in res_rel.data] if res_rel.data else []
-        if not secuencias:
-            return {"datos": []}
-        res_alim = supabase.table("alimento").select("secuencia, variedad").in_("secuencia", secuencias).order("secuencia", asc=True).execute()
-        return {"datos": res_alim.data}
-    except Exception as e:
-        print(f"🔴 Error alimentos por empresa: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.get("/api/alimentos")
-def listar_alimentos(
-    supabase: Client = Depends(get_supabase),
-):
+def listar_alimentos(supabase: Client = Depends(get_supabase)):
     try:
+        print("🔍 Conectando con Supabase...")
         respuesta = supabase.table("alimento").select("*").order("secuencia", asc=True).execute()
+        print(f"✅ Éxito — registros: {len(respuesta.data)}")
         return {"datos": respuesta.data}
     except Exception as e:
-        print(f"🔴 Error listar alimentos: {e}")
+        import traceback
+        error_completo = traceback.format_exc()
+        print(f"🔴 ERROR:\n{error_completo}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/alimentos")
