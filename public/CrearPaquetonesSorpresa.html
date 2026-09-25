@@ -428,7 +428,7 @@ async function listarPaquetes() {
                 <td>${p.Productos}</td>
                 <td>Q${parseFloat(p.PrecioNormal || 0).toFixed(2)}</td>
                 <td>Q${parseFloat(p.PrecioOferton || 0).toFixed(2)}</td>
-                <td>${p.DiaPromoción || '—'}</td>
+                <td>${p.DiaPromocion || '—'}</td>
                 <td><strong>${p.disponible || 1}</strong></td>
                 <td class="estado-${p.Estado}">${est}</td>
             </tr>`;
@@ -497,7 +497,7 @@ async function guardarRegistro() {
         };
         // ✅ CORREGIDO: notación con corchetes para el nombre con tilde
         if (fechaSeleccionada) {
-            datosInsert["DiaPromoción"] = fechaSeleccionada;
+            datosInsert["DiaPromocion"] = fechaSeleccionada;
         }
         
         const res = await fetch(`${API_BASE}/public/paquetes-oferton`, {
