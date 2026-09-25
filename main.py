@@ -302,16 +302,30 @@ def listar_alimentos_por_empresa(
     supabase: Client = Depends(get_supabase)
 ):
     try:
-        # Trae SOLO los alimentos vinculados a esta empresa
-        respuesta = supabase.table("empresalimento")\
-            .select("secuencia, variedad")\
+        # Paso 1: Obtener los números de secuencia asociados
+        resp_asoc = supabase.table("empresalimento")\
+            .select("secuencia")\
             .eq("NIT", nit)\
             .order("secuencia")\
             .execute()
-        return {"datos": respuesta.data}
+        
+        lista_secuencias = [fila["secuencia"] for fila in resp_asoc.data]
+        
+        if not lista_secuencias:
+            return {"datos": []}
+        
+        # Paso 2: Obtener los nombres desde la tabla alimento
+        resp_nombres = supabase.table("alimento")\
+            .select("secuencia, variedad")\
+            .in_("secuencia", lista_secuencias)\
+            .order("secuencia")\
+            .execute()
+        
+        return {"datos": resp_nombres.data}
+        
     except Exception as e:
+        print("❌ Error:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # ==================================================
 # 🏢 EMPRESAS — PROTEGIDAS (requieren sesión)
