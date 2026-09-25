@@ -179,6 +179,8 @@ class AlimentoUpdate(BaseModel):
 # ==================================================
 # 🏠 RUTAS PÚBLICAS — Sin token, acceso directo
 # ==================================================
+
+
 @app.get("/")
 def raiz():
     return RedirectResponse(url="/estatico/index.html")
@@ -186,7 +188,7 @@ def raiz():
 @app.get("/api/public/empresas")
 def listar_empresas_publicas(supabase: Client = Depends(get_supabase)):
     try:
-        respuesta = supabase.table("Empresa").select("*").order("Nombre Legal", desc=False).execute()
+        respuesta = supabase.table("Empresa").select("*").order('"Nombre Legal"', desc=False).execute()
         return {"datos": respuesta.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -326,13 +328,15 @@ def listar_alimentos_por_empresa(
 # ==================================================
 # 🏢 EMPRESAS — PROTEGIDAS (requieren sesión)
 # ==================================================
-@app.get("/api/empresas")
-def listar_empresas(
-    supabase: Client = Depends(get_supabase),
-    _: UsuarioActual = Depends(obtener_usuario_actual)
+@app.get("/api/public/empresas")
+def listar_empresas_publica(
+    supabase: Client = Depends(get_supabase)
 ):
     try:
-        respuesta = supabase.table("Empresa").select("*").order("Nombre Legal", desc=False).execute()
+        respuesta = supabase.table("Empresa")\
+            .select("*")\
+            .order('"Nombre Legal"', desc=False)\
+            .execute()
         return {"datos": respuesta.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -344,7 +348,7 @@ def obtener_empresa(
     _: UsuarioActual = Depends(obtener_usuario_actual)
 ):
     try:
-        respuesta = supabase.table("Empresa").select("*").eq("NIT", nit).single().execute()
+        respuesta = supabase.table("Empresa").select("*").eq('"NIT"', nit).single().execute()
         if not respuesta.data:
             raise HTTPException(status_code=404, detail="Empresa no encontrada")
         return respuesta.data
@@ -780,7 +784,7 @@ def listar_sucursales_paquetes_anteriores(
         if not paquetes:
             return {"datos": [], "fecha_hoy": hoy}
         nits_unicos = list({p["NIT"] for p in paquetes})
-        res_empresas = supabase.table("Empresa").select('NIT, "Nombre Comercial", "Nombre Legal"').in_("NIT", nits_unicos).execute()
+        res_empresas = supabase.table("Empresa").select('NIT, '"Nombre Comercial"', '"Nombre Legal"').in_("NIT", nits_unicos).execute()
         empresas = res_empresas.data or []
         res_sucursales = supabase.table("Sucursal").select("NIT, Sucursal, Localización").execute()
         sucursales = res_sucursales.data or []
@@ -795,6 +799,7 @@ def listar_sucursales_paquetes_anteriores(
         return {"datos": list(agrupado.values()), "fecha_hoy": hoy}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # ==================================================
 # 📄 SERVIR PÁGINAS
