@@ -293,18 +293,6 @@ def crear_paquete_publico(
             raise HTTPException(status_code=409, detail="El ID de paquete ya existe para esta sucursal")
         raise HTTPException(status_code=500, detail=error_msg)
 
-# ✅ RUTA AGREGADA — alimentos-por-empresa
-@app.get("/api/alimentos-por-empresa")
-def listar_alimentos_por_empresa(
-    nit: str | None = None,
-    supabase: Client = Depends(get_supabase)
-):
-    try:
-        respuesta = supabase.table("alimento").select("*").order("secuencia").execute()
-        return {"datos": respuesta.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 # ==================================================
 # 🍽️ ALIMENTOS POR EMPRESA — PÚBLICA
 # ==================================================
