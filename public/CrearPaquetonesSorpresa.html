@@ -334,13 +334,14 @@ async function cargarHorariosEntrega() {
 
 async function cargarAlimentos() {
     try {
-        // ✅ Cambiada la ruta completa
-        const res = await fetch(`${API_BASE}/public/alimentos`);
+        // ✅ AHORA TRAE SOLO LOS DE ESTA EMPRESA
+        const res = await fetch(`${API_BASE}/public/alimentos-por-empresa?nit=${encodeURIComponent(nitFijo)}`);
         if (!res.ok) throw new Error(`Error ${res.status}`);
         const { datos } = await res.json();
         
         const selectAlimento = document.getElementById('alimento_secuencia');
         selectAlimento.innerHTML = '<option value="">-- Seleccione variedad --</option>';
+        
         if (datos && datos.length > 0) {
             datos.forEach(fila => {
                 const opcion = document.createElement('option');
@@ -349,7 +350,8 @@ async function cargarAlimentos() {
                 selectAlimento.appendChild(opcion);
             });
         } else {
-            selectAlimento.innerHTML = '<option value="">⚠️ No hay alimentos registrados</option>';
+            selectAlimento.innerHTML = '<option value="">⚠️ No hay alimentos asignados a esta empresa</option>';
+            mostrarMensaje("⚠️ Primero asigne alimentos a la empresa antes de crear paquetes", "error");
         }
     } catch (err) {
         console.error("❌ Error cargando alimentos:", err.message);
