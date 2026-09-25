@@ -305,7 +305,7 @@ def listar_alimentos_por_empresa(
         # PASO 1: Obtener los números de secuencia asociados a la empresa
         resp_asoc = supabase.table("empresalimento")\
             .select("secuencia")\
-            .eq("NIT", nit)\
+            .eq("nit", nit)\
             .order("secuencia")\
             .execute()
         
