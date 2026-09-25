@@ -538,13 +538,13 @@ def actualizar_precio(
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================================================
-# 🍽️ ALIMENTOS — ACCESO LIBRE TEMPORALMENTE ✅
+# 🍽️ ALIMENTOS — CORREGIDO ✅
 # ==================================================
 @app.get("/api/alimentos")
 def listar_alimentos(supabase: Client = Depends(get_supabase)):
     try:
         print("🔍 Conectando con Supabase...")
-        respuesta = supabase.table("alimento").select("*").order("secuencia", asc=True).execute()
+        respuesta = supabase.table("alimento").select("*").order("secuencia", ascending=True).execute()
         print(f"✅ Éxito — registros: {len(respuesta.data)}")
         return {"datos": respuesta.data}
     except Exception as e:
@@ -559,7 +559,7 @@ def crear_alimento(
     supabase: Client = Depends(get_supabase),
 ):
     try:
-        res_max = supabase.table("alimento").select("secuencia").order("secuencia", desc=True).limit(1).execute()
+        res_max = supabase.table("alimento").select("secuencia").order("secuencia", ascending=False).limit(1).execute()
         siguiente_secuencia = 1 if not res_max.data or len(res_max.data) == 0 else res_max.data[0]["secuencia"] + 1
         registro = {"secuencia": siguiente_secuencia, "variedad": datos.variedad}
         respuesta = supabase.table("alimento").insert(registro).execute()
