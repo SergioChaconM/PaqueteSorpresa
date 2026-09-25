@@ -495,11 +495,11 @@ async function guardarRegistro() {
             disponible: valorDisponible,
             detalle: detalleTexto || null
         };
+        // ✅ CORREGIDO: notación con corchetes para el nombre con tilde
         if (fechaSeleccionada) {
-            datosInsert.DiaPromoción = fechaSeleccionada;
+            datosInsert["DiaPromoción"] = fechaSeleccionada;
         }
         
-        // ✅ Con /public/
         const res = await fetch(`${API_BASE}/public/paquetes-oferton`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
