@@ -494,7 +494,8 @@
 
             try {
                 // 📞 Llamada a tu API en Render en lugar de directo a Supabase
-                const respuesta = await fetch(`${API_BASE}/empresas`);
+
+		const respuesta = await fetch(`${API_BASE}/public/empresas`);
                 const resultado = await respuesta.json();
                 const data = resultado.datos;
 
