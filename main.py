@@ -302,7 +302,7 @@ def listar_alimentos_por_empresa(
     supabase: Client = Depends(get_supabase)
 ):
     try:
-        # PASO 1: Obtener los números de secuencia de esta empresa
+        # PASO 1: Obtener solo los números de secuencia
         resp_asoc = supabase.table("empresalimento")\
             .select("secuencia")\
             .eq("NIT", nit)\
@@ -314,7 +314,7 @@ def listar_alimentos_por_empresa(
         if not lista_secuencias:
             return {"datos": []}
         
-        # PASO 2: Obtener los nombres desde la tabla alimento
+        # PASO 2: Buscar los nombres en la tabla alimento
         resp_nombres = supabase.table("alimento")\
             .select("secuencia, variedad")\
             .in_("secuencia", lista_secuencias)\
@@ -324,7 +324,7 @@ def listar_alimentos_por_empresa(
         return {"datos": resp_nombres.data}
         
     except Exception as e:
-        print("❌ ERROR en ruta:", repr(e))
+        print("❌ ERROR:", repr(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================================================
