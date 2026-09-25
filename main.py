@@ -71,11 +71,9 @@ async def obtener_usuario_actual(
         detail="Token inválido o expirado — inicia sesión primero",
         headers={"WWW-Authenticate": "Bearer"},
     )
-
     if not SUPABASE_JWT_SECRET:
         print("⚠️ SUPABASE_JWT_SECRET no configurado — saltando validación")
         return UsuarioActual(id="desarrollo", email="dev@local", rol="admin")
-
     token = credentials.credentials
     try:
         payload = jwt.decode(
@@ -104,7 +102,7 @@ async def solo_admin(usuario: UsuarioActual = Depends(obtener_usuario_actual)):
     return usuario
 
 # ==================================================
-# 📋 ESQUEMAS DE VALIDACIÓN (sin cambios)
+# 📋 ESQUEMAS DE VALIDACIÓN
 # ==================================================
 class EmpresaCreate(BaseModel):
     NIT: str
@@ -179,13 +177,12 @@ class AlimentoUpdate(BaseModel):
     variedad: str | None = None
 
 # ==================================================
-# 🏠 RUTAS PÚBLICAS — Sin token, acceso directo desde el frontend
+# 🏠 RUTAS PÚBLICAS — Sin token, acceso directo
 # ==================================================
 @app.get("/")
 def raiz():
     return RedirectResponse(url="/estatico/index.html")
 
-# Empresas — para NitSucursalPaquete.html
 @app.get("/api/public/empresas")
 def listar_empresas_publicas(supabase: Client = Depends(get_supabase)):
     try:
@@ -194,7 +191,6 @@ def listar_empresas_publicas(supabase: Client = Depends(get_supabase)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Sucursales — para NitSucursalPaquete.html
 @app.get("/api/public/sucursales")
 def listar_sucursales_publicas(nit: str | None = None, supabase: Client = Depends(get_supabase)):
     try:
@@ -206,7 +202,6 @@ def listar_sucursales_publicas(nit: str | None = None, supabase: Client = Depend
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Horarios — para CrearPaquetonesSorpresa.html
 @app.get("/api/public/horarios")
 def listar_horarios_publicos(
     nit: str | None = None,
@@ -215,16 +210,13 @@ def listar_horarios_publicos(
 ):
     try:
         consulta = supabase.table("HorarioEntrega").select("*")
-        if nit:
-            consulta = consulta.eq("nit", nit)
-        if sucursal is not None:
-            consulta = consulta.eq("sucursal", sucursal)
+        if nit: consulta = consulta.eq("nit", nit)
+        if sucursal is not None: consulta = consulta.eq("sucursal", sucursal)
         respuesta = consulta.order("grupo").execute()
         return {"datos": respuesta.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Alimentos — para CrearPaquetonesSorpresa.html
 @app.get("/api/public/alimentos")
 def listar_alimentos_publicos(supabase: Client = Depends(get_supabase)):
     try:
@@ -233,7 +225,6 @@ def listar_alimentos_publicos(supabase: Client = Depends(get_supabase)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Datos de sucursal específica — para CrearPaquetonesSorpresa.html
 @app.get("/api/public/sucursal-datos")
 def obtener_datos_sucursal_publica(
     nit: str,
@@ -246,23 +237,46 @@ def obtener_datos_sucursal_publica(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Siguiente ID de paquete
 @app.get("/api/public/paquetes-oferton/siguiente-id")
 def siguiente_id_paquete_publico(
+    nit: str, sucursal: int,
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        respuesta = supabase.table("PaqueteOferton")\
+            .select("IDPaquete")\
+            .eq("NIT", nit)\
+            .eq("Sucursal", sucursal)\
+            .execute()
+        siguiente = 1
+        if respuesta.data and len(respuesta.data) > 0:
+            ids = [fila["IDPaquete"] for fila in respuesta.data]
+            siguiente = max(ids) + 1
+        return {"siguiente_id": siguiente}
+    except Exception as e:
+        print(f"🔴 ERROR siguiente-id: {repr(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/public/paquetes-oferton")
+def listar_paquetes_publicos(
     nit: str,
     sucursal: int,
     supabase: Client = Depends(get_supabase)
 ):
     try:
-        respuesta = supabase.table("PaqueteOferton").select("IDPaquete").eq("NIT", nit).eq("Sucursal", sucursal).order("IDPaquete", desc=True).limit(1).execute()
-        siguiente = 1
-        if respuesta.data and len(respuesta.data) > 0:
-            siguiente = respuesta.data[0]["IDPaquete"] + 1
-        return {"siguiente_id": siguiente}
+        respuesta = supabase.table("PaqueteOferton").select("*").execute()
+        filtrados = []
+        for fila in (respuesta.data or []):
+            fila_nit = fila.get("NIT") or fila.get("nit")
+            fila_suc = fila.get("Sucursal") or fila.get("sucursal")
+            if str(fila_nit) == str(nit) and int(fila_suc) == int(sucursal):
+                filtrados.append(fila)
+        filtrados.sort(key=lambda x: x.get("IDPaquete") or 0)
+        return {"datos": filtrados}
     except Exception as e:
+        print(f"🔴 ERROR: {type(e).__name__} - {repr(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Crear paquete
 @app.post("/api/public/paquetes-oferton")
 def crear_paquete_publico(
     datos: PaqueteOfertonCreate,
@@ -277,8 +291,20 @@ def crear_paquete_publico(
             raise HTTPException(status_code=409, detail="El ID de paquete ya existe para esta sucursal")
         raise HTTPException(status_code=500, detail=error_msg)
 
+# ✅ RUTA AGREGADA — alimentos-por-empresa
+@app.get("/api/alimentos-por-empresa")
+def listar_alimentos_por_empresa(
+    nit: str | None = None,
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        respuesta = supabase.table("alimento").select("*").order("secuencia").execute()
+        return {"datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ==================================================
-# 🏢 EMPRESAS — PROTEGIDAS
+# 🏢 EMPRESAS — PROTEGIDAS (requieren sesión)
 # ==================================================
 @app.get("/api/empresas")
 def listar_empresas(
@@ -359,8 +385,7 @@ def listar_sucursales(
 ):
     try:
         consulta = supabase.table("Sucursal").select("*")
-        if nit:
-            consulta = consulta.eq("NIT", nit)
+        if nit: consulta = consulta.eq("NIT", nit)
         respuesta = consulta.order("Sucursal").execute()
         return {"datos": respuesta.data}
     except Exception as e:
@@ -380,8 +405,7 @@ def siguiente_numero_sucursal(
 
 @app.get("/api/sucursales/{nit}/{numero}")
 def obtener_sucursal(
-    nit: str,
-    numero: int,
+    nit: str, numero: int,
     supabase: Client = Depends(get_supabase),
     _: UsuarioActual = Depends(obtener_usuario_actual)
 ):
@@ -414,8 +438,7 @@ def crear_sucursal(
 
 @app.put("/api/sucursales/{nit}/{numero}")
 def actualizar_sucursal(
-    nit: str,
-    numero: int,
+    nit: str, numero: int,
     datos: SucursalUpdate,
     supabase: Client = Depends(get_supabase),
     _: UsuarioActual = Depends(obtener_usuario_actual)
@@ -437,8 +460,7 @@ def actualizar_sucursal(
 
 @app.delete("/api/sucursales/{nit}/{numero}")
 def eliminar_sucursal(
-    nit: str,
-    numero: int,
+    nit: str, numero: int,
     supabase: Client = Depends(get_supabase),
     _: UsuarioActual = Depends(solo_admin)
 ):
@@ -451,7 +473,7 @@ def eliminar_sucursal(
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================================================
-# 🕒 HORARIOS DE ENTREGA — PROTEGIDAS
+# 🕒 HORARIOS — PROTEGIDAS
 # ==================================================
 @app.get("/api/horarios")
 def listar_horarios(
@@ -514,77 +536,7 @@ def eliminar_horario(
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================================================
-# 🎁 PAQUETES OFERTÓN — PÚBLICAS (sin token) ✅
-# ==================================================
-@app.get("/api/public/paquetes-oferton/siguiente-id")
-def siguiente_id_paquete_publico(
-    nit: str, sucursal: int,
-    supabase: Client = Depends(get_supabase)
-):
-    try:
-        respuesta = supabase.table("PaqueteOferton")\
-            .select("IDPaquete")\
-            .eq("NIT", nit)\
-            .eq("Sucursal", sucursal)\
-            .execute()
-        siguiente = 1
-        if respuesta.data and len(respuesta.data) > 0:
-            ids = [fila["IDPaquete"] for fila in respuesta.data]
-            siguiente = max(ids) + 1
-        return {"siguiente_id": siguiente}
-    except Exception as e:
-        print(f"🔴 ERROR siguiente-id: {repr(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/public/paquetes-oferton")
-def listar_paquetes_publicos(
-    nit: str,
-    sucursal: int,
-    supabase: Client = Depends(get_supabase)
-):
-    try:
-        # Primero traemos TODO sin filtro para verificar
-        respuesta = supabase.table("PaqueteOferton").select("*").execute()
-        print(f"✅ Total registros: {len(respuesta.data) if respuesta.data else 0}")
-        
-        # Filtramos manualmente en Python (así no hay problema con mayúsculas)
-        filtrados = []
-        for fila in (respuesta.data or []):
-            # Probamos ambos nombres: mayúscula y minúscula
-            fila_nit = fila.get("NIT") or fila.get("nit")
-            fila_suc = fila.get("Sucursal") or fila.get("sucursal")
-            
-            if str(fila_nit) == str(nit) and int(fila_suc) == int(sucursal):
-                filtrados.append(fila)
-        
-        print(f"✅ Coinciden: {len(filtrados)}")
-        
-        # Ordenamos por ID
-        filtrados.sort(key=lambda x: x.get("IDPaquete") or x.get("idpaquete") or 0)
-        return {"datos": filtrados}
-    except Exception as e:
-        print(f"🔴 ERROR DETALLADO: {type(e).__name__} - {repr(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/public/paquetes-oferton")
-def crear_paquete_publico(
-    datos: PaqueteOfertonCreate,
-    supabase: Client = Depends(get_supabase)
-):
-    try:
-        datos_insertar = datos.model_dump()
-        print(f"📝 Datos a guardar: {datos_insertar}")
-        respuesta = supabase.table("PaqueteOferton").insert(datos_insertar).execute()
-        return {"mensaje": "Paquete registrado ✅", "datos": respuesta.data[0]}
-    except Exception as e:
-        print(f"🔴 ERROR guardar paquete: {repr(e)}")
-        error_msg = str(e)
-        if "duplicate key" in error_msg.lower() or "23505" in error_msg:
-            raise HTTPException(status_code=409, detail="El ID de paquete ya existe para esta sucursal")
-        raise HTTPException(status_code=500, detail=error_msg)
-
-# ==================================================
-# 🎁 PAQUETES OFERTÓN — PROTEGIDAS (con token) ✅
+# 🎁 PAQUETES OFERTÓN — PROTEGIDAS
 # ==================================================
 @app.get("/api/paquetes-oferton/siguiente-id")
 def siguiente_id_paquete(
@@ -739,19 +691,14 @@ def actualizar_precio(
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================================================
-# 🍽️ ALIMENTOS — VERSIÓN FINAL ✅
+# 🍽️ ALIMENTOS
 # ==================================================
 @app.get("/api/alimentos")
 def listar_alimentos(supabase: Client = Depends(get_supabase)):
     try:
-        print("🔍 Conectando con Supabase...")
         respuesta = supabase.table("alimento").select("*").order("secuencia").execute()
-        print(f"✅ Éxito — registros: {len(respuesta.data)}")
         return {"datos": respuesta.data}
     except Exception as e:
-        import traceback
-        error_completo = traceback.format_exc()
-        print(f"🔴 ERROR:\n{error_completo}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/alimentos")
@@ -761,8 +708,6 @@ def crear_alimento(
 ):
     try:
         res_max = supabase.table("alimento").select("secuencia").order("secuencia", desc=True).limit(1).execute()
-        # Si la línea de arriba también falla, usa esta versión:
-        # res_max = supabase.table("alimento").select("secuencia").order("secuencia").limit(1).execute()
         siguiente_secuencia = 1 if not res_max.data or len(res_max.data) == 0 else res_max.data[0]["secuencia"] + 1
         registro = {"secuencia": siguiente_secuencia, "variedad": datos.variedad}
         respuesta = supabase.table("alimento").insert(registro).execute()
@@ -800,7 +745,7 @@ def eliminar_alimento(
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================================================
-# 📊 SUCURSALES CON PAQUETES ANTERIORES — PROTEGIDA
+# 📊 SUCURSALES CON PAQUETES ANTERIORES
 # ==================================================
 @app.get("/api/sucursales-con-paquetes-anteriores")
 def listar_sucursales_paquetes_anteriores(
