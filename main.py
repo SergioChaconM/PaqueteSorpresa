@@ -185,6 +185,25 @@ class AlimentoUpdate(BaseModel):
 def raiz():
     return RedirectResponse(url="/estatico/index.html")
 
+@app.get("/api/public/empresas")
+def listar_empresas_publicas(supabase: Client = Depends(get_supabase)):
+    try:
+        respuesta = supabase.table("Empresa").select("*").order("Nombre Legal", desc=False).execute()
+        return {"datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/public/sucursales")
+def listar_sucursales_publicas(nit: str | None = None, supabase: Client = Depends(get_supabase)):
+    try:
+        consulta = supabase.table("Sucursal").select("*")
+        if nit:
+            consulta = consulta.eq("NIT", nit)
+        respuesta = consulta.order("Sucursal").execute()
+        return {"datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ==================================================
 # 🏢 EMPRESAS — PROTEGIDAS
 # ==================================================

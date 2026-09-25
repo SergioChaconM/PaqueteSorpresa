@@ -47,120 +47,129 @@
     </div>
 
 <script>
-    // 🔗 API — SIN credenciales expuestas 🔒
-    const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
-        ? "http://127.0.0.1:8000/api"
-        : "/api";
+const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+    ? "http://127.0.0.1:8000/api"
+    : "/api";
 
-    function mostrarError(mensaje) {
-        document.getElementById('cargando').innerHTML = `<p class="error">❌ ${mensaje}</p>`;
-    }
+function mostrarError(mensaje) {
+    document.getElementById('cargando').innerHTML = `<p style="color:#e74c3c; padding:1rem;">❌ ${mensaje}</p>`;
+}
 
-    function mostrarFormulario() {
-        document.getElementById('cargando').style.display = 'none';
-        document.getElementById('formIngreso').style.display = 'block';
-    }
+function mostrarFormulario() {
+    document.getElementById('cargando').style.display = 'none';
+    document.getElementById('formIngreso').style.display = 'block';
+}
 
-    async function cargarEmpresas() {
-        try {
-            const res = await fetch(`${API_BASE}/empresas`);
-            if (!res.ok) throw new Error(`Error ${res.status}`);
-            const { datos } = await res.json();
-            
-            if (!datos || datos.length === 0) {
-                throw new Error("No hay empresas registradas");
-            }
-            
-            document.getElementById('mensajeConteo').textContent = `✅ Existen ${datos.length} empresas registradas`;
-            document.getElementById('mensajeConteo').style.display = 'block';
-            
-            const selectNit = document.getElementById('nit');
-            selectNit.innerHTML = '<option value="">Seleccione una empresa</option>';
-            datos.forEach(item => {
-                let opcion = document.createElement('option');
-                opcion.value = item.NIT;
-                opcion.textContent = `${item.NIT} - ${item["Nombre Legal"] || 'Sin nombre'}`;
-                selectNit.appendChild(opcion);
-            });
-
-            // Al cambiar empresa → cargar sucursales
-            selectNit.addEventListener('change', async function() {
-                const selectSuc = document.getElementById('sucursal');
-                if (this.value) {
-                    selectSuc.innerHTML = '<option value="">Cargando sucursales...</option>';
-                    await cargarSucursales(this.value);
-                    selectSuc.disabled = false;
-                } else {
-                    selectSuc.disabled = true;
-                    selectSuc.innerHTML = '<option value="">Primero seleccione una empresa</option>';
-                }
-            });
-
-            return true;
-        } catch (err) {
-            console.error('Error:', err);
-            mostrarError(`No se pudo cargar: ${err.message}`);
+async function cargarEmpresas() {
+    try {
+        console.log("🔍 Cargando empresas desde:", `${API_BASE}/public/empresas`);
+        const res = await fetch(`${API_BASE}/public/empresas`);
+        
+        if (!res.ok) throw new Error(`Servidor respondió: ${res.status}`);
+        
+        const { datos } = await res.json();
+        
+        if (!datos || datos.length === 0) {
+            mostrarError("No hay empresas registradas en Supabase");
             return false;
         }
-    }
-
-    async function cargarSucursales(nitEmpresa) {
-        try {
-            const res = await fetch(`${API_BASE}/sucursales?nit=${encodeURIComponent(nitEmpresa)}`);
-            if (!res.ok) throw new Error(`Error ${res.status}`);
-            const { datos } = await res.json();
-            
-            const selectSucursal = document.getElementById('sucursal');
-            selectSucursal.innerHTML = '<option value="">Seleccione una sucursal</option>';
-            
-            if (!datos.length) {
-                alert("⚠️ Esta empresa no tiene sucursales registradas");
-                return;
+        
+        document.getElementById('mensajeConteo').textContent = `✅ Existen ${datos.length} empresas registradas`;
+        document.getElementById('mensajeConteo').style.display = 'block';
+        
+        const selectNit = document.getElementById('nit');
+        selectNit.innerHTML = '<option value="">Seleccione una empresa</option>';
+        datos.forEach(item => {
+            const opcion = document.createElement('option');
+            opcion.value = item.NIT;
+            opcion.textContent = `${item.NIT} - ${item["Nombre Legal"] || 'Sin nombre'}`;
+            selectNit.appendChild(opcion);
+        });
+        
+        selectNit.addEventListener('change', async function() {
+            const selectSuc = document.getElementById('sucursal');
+            if (this.value) {
+                selectSuc.innerHTML = '<option value="">Cargando sucursales...</option>';
+                await cargarSucursales(this.value);
+                selectSuc.disabled = false;
+            } else {
+                selectSuc.disabled = true;
+                selectSuc.innerHTML = '<option value="">Primero seleccione una empresa</option>';
+                document.getElementById('mensajeConteo').style.display = 'none';
             }
-            
-            datos.forEach(item => {
-                let opcion = document.createElement('option');
-                opcion.value = item.Sucursal;
-                opcion.textContent = `${item.Sucursal} - ${item.Localización || 'Sin ubicación'}`;
-                selectSucursal.appendChild(opcion);
-            });
-        } catch (err) {
-            console.error('Error Sucursales:', err);
-            alert(`Error al cargar sucursales: ${err.message}`);
-        }
-    }
-
-    async function iniciar() {
-        const ok = await cargarEmpresas();
-        if (ok) mostrarFormulario();
-    }
-
-    window.addEventListener('load', iniciar);
-
-    const form = document.getElementById('formIngreso');
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const nit = document.getElementById('nit').value;
-        const sucursal = document.getElementById('sucursal').value;
-        let valido = true;
+        });
         
-        if (!nit) {
-            document.getElementById('errorNit').style.display = 'block';
-            valido = false;
-        } else {
-            document.getElementById('errorNit').style.display = 'none';
-        }
-        if (!sucursal) {
-            document.getElementById('errorSucursal').style.display = 'block';
-            valido = false;
-        } else {
-            document.getElementById('errorSucursal').style.display = 'none';
+        mostrarFormulario();
+        return true;
+        
+    } catch (err) {
+        console.error('Error completo:', err);
+        mostrarError(`No se pudo conectar: ${err.message}<br>Verifica que el servidor esté activo en el puerto 8000`);
+        return false;
+    }
+}
+
+async function cargarSucursales(nitEmpresa) {
+    try {
+        const res = await fetch(`${API_BASE}/public/sucursales?nit=${encodeURIComponent(nitEmpresa)}`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        
+        const { datos } = await res.json();
+        const selectSucursal = document.getElementById('sucursal');
+        selectSucursal.innerHTML = '<option value="">Seleccione una sucursal</option>';
+        
+        if (!datos.length) {
+            alert("⚠️ Esta empresa no tiene sucursales registradas");
+            return;
         }
         
-        if (valido) {
-            window.location.href = `CrearPaquetonesSorpresa.html?nit=${encodeURIComponent(nit)}&sucursal=${encodeURIComponent(sucursal)}`;
-        }
-    });
+        datos.forEach(item => {
+            const opcion = document.createElement('option');
+            opcion.value = item.Sucursal;
+            opcion.textContent = `${item.Sucursal} - ${item.Localización || 'Sin ubicación'}`;
+            selectSucursal.appendChild(opcion);
+        });
+        
+        document.getElementById('mensajeConteo').textContent = `✅ ${datos.length} sucursales disponibles`;
+        document.getElementById('mensajeConteo').style.display = 'block';
+        
+    } catch (err) {
+        console.error('Error Sucursales:', err);
+        alert(`Error al cargar sucursales: ${err.message}`);
+    }
+}
+
+async function iniciar() {
+    document.getElementById('cargando').style.display = 'block';
+    await cargarEmpresas();
+}
+
+window.addEventListener('load', iniciar);
+
+const form = document.getElementById('formIngreso');
+form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const nit = document.getElementById('nit').value;
+    const sucursal = document.getElementById('sucursal').value;
+    let valido = true;
+    
+    if (!nit) {
+        document.getElementById('errorNit').style.display = 'block';
+        valido = false;
+    } else {
+        document.getElementById('errorNit').style.display = 'none';
+    }
+    if (!sucursal) {
+        document.getElementById('errorSucursal').style.display = 'block';
+        valido = false;
+    } else {
+        document.getElementById('errorSucursal').style.display = 'none';
+    }
+    
+    if (valido) {
+        window.location.href = `CrearPaquetonesSorpresa.html?nit=${encodeURIComponent(nit)}&sucursal=${encodeURIComponent(sucursal)}`;
+    }
+});
 </script>
 </body>
 </html>
