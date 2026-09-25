@@ -179,12 +179,13 @@ class AlimentoUpdate(BaseModel):
     variedad: str | None = None
 
 # ==================================================
-# 🏠 RUTAS PÚBLICAS
+# 🏠 RUTAS PÚBLICAS — Sin token, acceso directo desde el frontend
 # ==================================================
 @app.get("/")
 def raiz():
     return RedirectResponse(url="/estatico/index.html")
 
+# Empresas — para NitSucursalPaquete.html
 @app.get("/api/public/empresas")
 def listar_empresas_publicas(supabase: Client = Depends(get_supabase)):
     try:
@@ -193,6 +194,7 @@ def listar_empresas_publicas(supabase: Client = Depends(get_supabase)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Sucursales — para NitSucursalPaquete.html
 @app.get("/api/public/sucursales")
 def listar_sucursales_publicas(nit: str | None = None, supabase: Client = Depends(get_supabase)):
     try:
@@ -203,6 +205,77 @@ def listar_sucursales_publicas(nit: str | None = None, supabase: Client = Depend
         return {"datos": respuesta.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Horarios — para CrearPaquetonesSorpresa.html
+@app.get("/api/public/horarios")
+def listar_horarios_publicos(
+    nit: str | None = None,
+    sucursal: int | None = None,
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        consulta = supabase.table("HorarioEntrega").select("*")
+        if nit:
+            consulta = consulta.eq("nit", nit)
+        if sucursal is not None:
+            consulta = consulta.eq("sucursal", sucursal)
+        respuesta = consulta.order("grupo").execute()
+        return {"datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Alimentos — para CrearPaquetonesSorpresa.html
+@app.get("/api/public/alimentos")
+def listar_alimentos_publicos(supabase: Client = Depends(get_supabase)):
+    try:
+        respuesta = supabase.table("alimento").select("*").order("secuencia").execute()
+        return {"datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Datos de sucursal específica — para CrearPaquetonesSorpresa.html
+@app.get("/api/public/sucursal-datos")
+def obtener_datos_sucursal_publica(
+    nit: str,
+    sucursal: int,
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        respuesta = supabase.table("Sucursal").select("*").eq("NIT", nit).eq("Sucursal", sucursal).execute()
+        return {"datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Siguiente ID de paquete
+@app.get("/api/public/paquetes-oferton/siguiente-id")
+def siguiente_id_paquete_publico(
+    nit: str,
+    sucursal: int,
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        respuesta = supabase.table("PaqueteOferton").select("IDPaquete").eq("NIT", nit).eq("Sucursal", sucursal).order("IDPaquete", desc=True).limit(1).execute()
+        siguiente = 1
+        if respuesta.data and len(respuesta.data) > 0:
+            siguiente = respuesta.data[0]["IDPaquete"] + 1
+        return {"siguiente_id": siguiente}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Crear paquete
+@app.post("/api/public/paquetes-oferton")
+def crear_paquete_publico(
+    datos: PaqueteOfertonCreate,
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        respuesta = supabase.table("PaqueteOferton").insert(datos.model_dump()).execute()
+        return {"mensaje": "Paquete registrado ✅", "datos": respuesta.data[0]}
+    except Exception as e:
+        error_msg = str(e)
+        if "duplicate key" in error_msg.lower() or "23505" in error_msg:
+            raise HTTPException(status_code=409, detail="El ID de paquete ya existe para esta sucursal")
+        raise HTTPException(status_code=500, detail=error_msg)
 
 # ==================================================
 # 🏢 EMPRESAS — PROTEGIDAS
@@ -441,7 +514,77 @@ def eliminar_horario(
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================================================
-# 🎁 PAQUETES OFERTÓN — PROTEGIDAS
+# 🎁 PAQUETES OFERTÓN — PÚBLICAS (sin token) ✅
+# ==================================================
+@app.get("/api/public/paquetes-oferton/siguiente-id")
+def siguiente_id_paquete_publico(
+    nit: str, sucursal: int,
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        respuesta = supabase.table("PaqueteOferton")\
+            .select("IDPaquete")\
+            .eq("NIT", nit)\
+            .eq("Sucursal", sucursal)\
+            .execute()
+        siguiente = 1
+        if respuesta.data and len(respuesta.data) > 0:
+            ids = [fila["IDPaquete"] for fila in respuesta.data]
+            siguiente = max(ids) + 1
+        return {"siguiente_id": siguiente}
+    except Exception as e:
+        print(f"🔴 ERROR siguiente-id: {repr(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/public/paquetes-oferton")
+def listar_paquetes_publicos(
+    nit: str,
+    sucursal: int,
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        # Primero traemos TODO sin filtro para verificar
+        respuesta = supabase.table("PaqueteOferton").select("*").execute()
+        print(f"✅ Total registros: {len(respuesta.data) if respuesta.data else 0}")
+        
+        # Filtramos manualmente en Python (así no hay problema con mayúsculas)
+        filtrados = []
+        for fila in (respuesta.data or []):
+            # Probamos ambos nombres: mayúscula y minúscula
+            fila_nit = fila.get("NIT") or fila.get("nit")
+            fila_suc = fila.get("Sucursal") or fila.get("sucursal")
+            
+            if str(fila_nit) == str(nit) and int(fila_suc) == int(sucursal):
+                filtrados.append(fila)
+        
+        print(f"✅ Coinciden: {len(filtrados)}")
+        
+        # Ordenamos por ID
+        filtrados.sort(key=lambda x: x.get("IDPaquete") or x.get("idpaquete") or 0)
+        return {"datos": filtrados}
+    except Exception as e:
+        print(f"🔴 ERROR DETALLADO: {type(e).__name__} - {repr(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/public/paquetes-oferton")
+def crear_paquete_publico(
+    datos: PaqueteOfertonCreate,
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        datos_insertar = datos.model_dump()
+        print(f"📝 Datos a guardar: {datos_insertar}")
+        respuesta = supabase.table("PaqueteOferton").insert(datos_insertar).execute()
+        return {"mensaje": "Paquete registrado ✅", "datos": respuesta.data[0]}
+    except Exception as e:
+        print(f"🔴 ERROR guardar paquete: {repr(e)}")
+        error_msg = str(e)
+        if "duplicate key" in error_msg.lower() or "23505" in error_msg:
+            raise HTTPException(status_code=409, detail="El ID de paquete ya existe para esta sucursal")
+        raise HTTPException(status_code=500, detail=error_msg)
+
+# ==================================================
+# 🎁 PAQUETES OFERTÓN — PROTEGIDAS (con token) ✅
 # ==================================================
 @app.get("/api/paquetes-oferton/siguiente-id")
 def siguiente_id_paquete(
@@ -450,10 +593,15 @@ def siguiente_id_paquete(
     _: UsuarioActual = Depends(obtener_usuario_actual)
 ):
     try:
-        respuesta = supabase.table("PaqueteOferton").select("IDPaquete").eq("NIT", nit).eq("Sucursal", sucursal).order("IDPaquete", desc=True).limit(1).execute()
+        respuesta = supabase.table("PaqueteOferton")\
+            .select("IDPaquete")\
+            .eq("NIT", nit)\
+            .eq("Sucursal", sucursal)\
+            .execute()
         siguiente = 1
         if respuesta.data and len(respuesta.data) > 0:
-            siguiente = respuesta.data[0]["IDPaquete"] + 1
+            ids = [fila["IDPaquete"] for fila in respuesta.data]
+            siguiente = max(ids) + 1
         return {"siguiente_id": siguiente}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -465,8 +613,14 @@ def listar_paquetes(
     _: UsuarioActual = Depends(obtener_usuario_actual)
 ):
     try:
-        respuesta = supabase.table("PaqueteOferton").select("*").eq("NIT", nit).eq("Sucursal", sucursal).order("IDPaquete", asc=True).execute()
-        return {"datos": respuesta.data}
+        respuesta = supabase.table("PaqueteOferton")\
+            .select("*")\
+            .eq("NIT", nit)\
+            .eq("Sucursal", sucursal)\
+            .execute()
+        datos = respuesta.data or []
+        datos.sort(key=lambda x: x.get("IDPaquete", 0))
+        return {"datos": datos}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -493,7 +647,12 @@ def actualizar_paquete(
     _: UsuarioActual = Depends(obtener_usuario_actual)
 ):
     try:
-        respuesta = supabase.table("PaqueteOferton").update(datos.model_dump(exclude_unset=True)).eq("NIT", nit).eq("Sucursal", sucursal).eq("IDPaquete", idpaquete).execute()
+        respuesta = supabase.table("PaqueteOferton")\
+            .update(datos.model_dump(exclude_unset=True))\
+            .eq("NIT", nit)\
+            .eq("Sucursal", sucursal)\
+            .eq("IDPaquete", idpaquete)\
+            .execute()
         if not respuesta.data:
             raise HTTPException(status_code=404, detail="Paquete no encontrado")
         return {"mensaje": "Paquete actualizado ✅", "datos": respuesta.data[0]}
@@ -507,7 +666,12 @@ def eliminar_paquete(
     _: UsuarioActual = Depends(solo_admin)
 ):
     try:
-        respuesta = supabase.table("PaqueteOferton").delete().eq("NIT", nit).eq("Sucursal", sucursal).eq("IDPaquete", idpaquete).execute()
+        respuesta = supabase.table("PaqueteOferton")\
+            .delete()\
+            .eq("NIT", nit)\
+            .eq("Sucursal", sucursal)\
+            .eq("IDPaquete", idpaquete)\
+            .execute()
         if not respuesta.data:
             raise HTTPException(status_code=404, detail="Paquete no encontrado")
         return {"mensaje": "Paquete eliminado ✅"}
@@ -522,8 +686,16 @@ def listar_paquetes_anteriores(
 ):
     try:
         hoy = date.today().isoformat()
-        respuesta = supabase.table("PaqueteOferton").select("IDPaquete, Productos, PrecioNormal, PrecioOferton, DiaPromoción, detalle, disponible").eq("NIT", nit).eq("Sucursal", sucursal).eq("Estado", "D").lt("DiaPromoción", hoy).order("DiaPromoción", asc=False).execute()
-        return {"datos": respuesta.data, "fecha_hoy": hoy}
+        respuesta = supabase.table("PaqueteOferton")\
+            .select("IDPaquete, Productos, PrecioNormal, PrecioOferton, DiaPromoción, detalle, disponible")\
+            .eq("NIT", nit)\
+            .eq("Sucursal", sucursal)\
+            .eq("Estado", "D")\
+            .lt("DiaPromoción", hoy)\
+            .execute()
+        datos = respuesta.data or []
+        datos.sort(key=lambda x: x.get("DiaPromoción", ""), reverse=True)
+        return {"datos": datos, "fecha_hoy": hoy}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -535,7 +707,12 @@ def reactivar_paquete(
 ):
     try:
         hoy = date.today().isoformat()
-        respuesta = supabase.table("PaqueteOferton").update({"DiaPromoción": hoy}).eq("NIT", nit).eq("Sucursal", sucursal).eq("IDPaquete", idpaquete).execute()
+        respuesta = supabase.table("PaqueteOferton")\
+            .update({"DiaPromoción": hoy})\
+            .eq("NIT", nit)\
+            .eq("Sucursal", sucursal)\
+            .eq("IDPaquete", idpaquete)\
+            .execute()
         if not respuesta.data:
             raise HTTPException(status_code=404, detail="Paquete no encontrado")
         return {"mensaje": "Paquete reactivado ✅", "datos": respuesta.data[0]}
@@ -549,7 +726,12 @@ def actualizar_precio(
     _: UsuarioActual = Depends(obtener_usuario_actual)
 ):
     try:
-        respuesta = supabase.table("PaqueteOferton").update({"PrecioOferton": nuevo_precio}).eq("NIT", nit).eq("Sucursal", sucursal).eq("IDPaquete", idpaquete).execute()
+        respuesta = supabase.table("PaqueteOferton")\
+            .update({"PrecioOferton": nuevo_precio})\
+            .eq("NIT", nit)\
+            .eq("Sucursal", sucursal)\
+            .eq("IDPaquete", idpaquete)\
+            .execute()
         if not respuesta.data:
             raise HTTPException(status_code=404, detail="Paquete no encontrado")
         return {"mensaje": "Precio actualizado ✅", "datos": respuesta.data[0]}
