@@ -183,7 +183,7 @@
 <body>
 <div id="app">
     <div class="encabezado-linea">
-        <button type="button" class="btn-volver-cabecera" onclick="volverAtras()">« Volver</button>
+        <button type="button" class="btn-volver-cabecera" onclick="window.location.href='index.html'">« Volver</button>
         <h2 id="tituloPagina">Registrar Nuevo Paquete Oferton</h2>
     </div>
     <div class="contenedor-form">
@@ -307,215 +307,222 @@
         m.style.display = 'block';
     }
 
-    async function cargarHorariosEntrega() {
-        try {
-            const res = await fetch(`${API_BASE}/horarios?nit=${encodeURIComponent(nitFijo)}&sucursal=${sucursalFija}`);
-            if (!res.ok) throw new Error(`Error ${res.status}`);
-            const { datos } = await res.json();
-            
-            const selectGrupo = document.getElementById('grupo');
-            selectGrupo.innerHTML = '<option value="">-- Seleccione un horario --</option>';
-            if (datos && datos.length > 0) {
-                datos.forEach(fila => {
-                    const opcion = document.createElement('option');
-                    opcion.value = fila.grupo;
-                    opcion.textContent = fila.entrega || fila.Dia || `Grupo ${fila.grupo}`;
-                    selectGrupo.appendChild(opcion);
-                });
-            } else {
-                selectGrupo.innerHTML = '<option value="">⚠️ No hay horarios registrados</option>';
-            }
-        } catch (err) {
-            console.error("❌ Error cargando horarios:", err.message);
-            document.getElementById('grupo').innerHTML = '<option value="">Error al cargar</option>';
-        }
-    }
-
-    async function cargarAlimentos() {
-        try {
-            const res = await fetch(`${API_BASE}/alimentos-por-empresa?nit=${encodeURIComponent(nitFijo)}`);
-            if (!res.ok) throw new Error(`Error ${res.status}`);
-            const { datos } = await res.json();
-            
-            const selectAlimento = document.getElementById('alimento_secuencia');
-            selectAlimento.innerHTML = '<option value="">-- Seleccione variedad --</option>';
-            if (datos && datos.length > 0) {
-                datos.forEach(fila => {
-                    const opcion = document.createElement('option');
-                    opcion.value = fila.secuencia;
-                    opcion.textContent = `${fila.secuencia} — ${fila.variedad || 'Sin nombre'}`;
-                    selectAlimento.appendChild(opcion);
-                });
-            } else {
-                selectAlimento.innerHTML = '<option value="">⚠️ No hay alimentos asignados</option>';
-            }
-        } catch (err) {
-            console.error("❌ Error cargando alimentos:", err.message);
-            document.getElementById('alimento_secuencia').innerHTML = '<option value="">Error al cargar</option>';
-        }
-    }
-
-    async function cargarDatosSucursal() {
-        try {
-            const res = await fetch(`${API_BASE}/sucursales?nit=${encodeURIComponent(nitFijo)}`);
-            if (!res.ok) throw new Error(`Error ${res.status}`);
-            const { datos } = await res.json();
-            const suc = datos.find(s => s.Sucursal === sucursalFija);
-            
-            const titulo = document.getElementById('tituloPagina');
-            if (suc && suc.Localización) {
-                titulo.textContent = `Registrar Nuevo Paquete Oferton — ${suc.Localización}`;
-            } else {
-                titulo.textContent = `Registrar Nuevo Paquete Oferton — Sucursal ${sucursalFija}`;
-            }
-        } catch (err) {
-            document.getElementById('tituloPagina').textContent = 
-                `Registrar Nuevo Paquete Oferton — Sucursal ${sucursalFija}`;
-        }
-    }
-
-    async function cargarSiguienteId() {
-        try {
-            const res = await fetch(`${API_BASE}/paquetes-oferton/siguiente-id?nit=${encodeURIComponent(nitFijo)}&sucursal=${sucursalFija}`);
-            if (!res.ok) throw new Error(`Error ${res.status}`);
-            const { siguiente_id } = await res.json();
-            siguienteId = siguiente_id;
-            document.getElementById('id_paquete').value = siguienteId;
-        } catch (err) {
-            siguienteId = 1;
-            document.getElementById('id_paquete').value = 1;
-        }
-    }
-
-    async function listarPaquetes() {
-        const contenedor = document.getElementById('listadoPaquetes');
-        contenedor.innerHTML = 'Cargando registros...';
+async function cargarHorariosEntrega() {
+    try {
+        // ✅ Agregado /public/
+        const res = await fetch(`${API_BASE}/public/horarios?nit=${encodeURIComponent(nitFijo)}&sucursal=${sucursalFija}`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const { datos } = await res.json();
         
-        try {
-            const res = await fetch(`${API_BASE}/paquetes-oferton?nit=${encodeURIComponent(nitFijo)}&sucursal=${sucursalFija}`);
-            if (!res.ok) throw new Error(`Error ${res.status}`);
-            const { datos } = await res.json();
-            
-            if (!datos || datos.length === 0) {
-                contenedor.innerHTML = '<p style="color:#15803d;">ℹ️ No hay paquetes registrados aún para esta sucursal.</p>';
-                return;
-            }
-            
-            let html = `<table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Productos</th>
-                        <th>Precio Normal</th>
-                        <th>Precio Oferton</th>
-                        <th>Día Promoción</th>
-                        <th>Cantidad Disponible</th>
-                        <th>Estado</th>
-                    </tr>
-                </thead>
-                <tbody>`;
-            datos.forEach(p => {
-                const est = {D:'Disponible',R:'Reservado',P:'Pagado',A:'Anulado'}[p.Estado] || p.Estado;
-                html += `<tr>
-                    <td>${p.IDPaquete}</td>
-                    <td>${p.Productos}</td>
-                    <td>Q${parseFloat(p.PrecioNormal || 0).toFixed(2)}</td>
-                    <td>Q${parseFloat(p.PrecioOferton || 0).toFixed(2)}</td>
-                    <td>${p.DiaPromoción || '—'}</td>
-                    <td><strong>${p.disponible || 1}</strong></td>
-                    <td class="estado-${p.Estado}">${est}</td>
-                </tr>`;
+        const selectGrupo = document.getElementById('grupo');
+        selectGrupo.innerHTML = '<option value="">-- Seleccione un horario --</option>';
+        if (datos && datos.length > 0) {
+            datos.forEach(fila => {
+                const opcion = document.createElement('option');
+                opcion.value = fila.grupo;
+                opcion.textContent = fila.entrega || `Grupo ${fila.grupo}`;
+                selectGrupo.appendChild(opcion);
             });
-            html += `</tbody></table>`;
-            contenedor.innerHTML = html;
-        } catch (err) {
-            contenedor.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+        } else {
+            selectGrupo.innerHTML = '<option value="">⚠️ No hay horarios registrados</option>';
+        }
+    } catch (err) {
+        console.error("❌ Error cargando horarios:", err.message);
+        document.getElementById('grupo').innerHTML = '<option value="">Error al cargar</option>';
+    }
+}
+
+async function cargarAlimentos() {
+    try {
+        // ✅ Cambiada la ruta completa
+        const res = await fetch(`${API_BASE}/public/alimentos`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const { datos } = await res.json();
+        
+        const selectAlimento = document.getElementById('alimento_secuencia');
+        selectAlimento.innerHTML = '<option value="">-- Seleccione variedad --</option>';
+        if (datos && datos.length > 0) {
+            datos.forEach(fila => {
+                const opcion = document.createElement('option');
+                opcion.value = fila.secuencia;
+                opcion.textContent = `${fila.secuencia} — ${fila.variedad || 'Sin nombre'}`;
+                selectAlimento.appendChild(opcion);
+            });
+        } else {
+            selectAlimento.innerHTML = '<option value="">⚠️ No hay alimentos registrados</option>';
+        }
+    } catch (err) {
+        console.error("❌ Error cargando alimentos:", err.message);
+        document.getElementById('alimento_secuencia').innerHTML = '<option value="">Error al cargar</option>';
+    }
+}
+
+async function cargarDatosSucursal() {
+    try {
+        // ✅ Ruta corregida: usamos /public/sucursales
+        const res = await fetch(`${API_BASE}/public/sucursales?nit=${encodeURIComponent(nitFijo)}`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const { datos } = await res.json();
+        
+        const suc = datos.find(s => s.Sucursal === sucursalFija);
+        
+        const titulo = document.getElementById('tituloPagina');
+        if (suc && suc.Localización) {
+            titulo.textContent = `Registrar Nuevo Paquete Oferton — ${suc.Localización}`;
+        } else {
+            titulo.textContent = `Registrar Nuevo Paquete Oferton — Sucursal ${sucursalFija}`;
+        }
+    } catch (err) {
+        console.error("Error datos sucursal:", err);
+        document.getElementById('tituloPagina').textContent = 
+            `Registrar Nuevo Paquete Oferton — Sucursal ${sucursalFija}`;
+    }
+}
+
+async function cargarSiguienteId() {
+    try {
+        // ✅ Con /public/
+        const res = await fetch(`${API_BASE}/public/paquetes-oferton/siguiente-id?nit=${encodeURIComponent(nitFijo)}&sucursal=${sucursalFija}`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const { siguiente_id } = await res.json();
+        siguienteId = siguiente_id;
+        document.getElementById('id_paquete').value = siguienteId;
+    } catch (err) {
+        siguienteId = 1;
+        document.getElementById('id_paquete').value = 1;
+    }
+}
+
+async function listarPaquetes() {
+    const contenedor = document.getElementById('listadoPaquetes');
+    contenedor.innerHTML = 'Cargando registros...';
+    
+    try {
+        // ✅ Con /public/
+        const res = await fetch(`${API_BASE}/public/paquetes-oferton?nit=${encodeURIComponent(nitFijo)}&sucursal=${sucursalFija}`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const { datos } = await res.json();
+        
+        if (!datos || datos.length === 0) {
+            contenedor.innerHTML = '<p style="color:#15803d;">ℹ️ No hay paquetes registrados aún para esta sucursal.</p>';
+            return;
+        }
+        
+        let html = `<table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Productos</th>
+                    <th>Precio Normal</th>
+                    <th>Precio Oferton</th>
+                    <th>Día Promoción</th>
+                    <th>Cantidad Disponible</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>`;
+        datos.forEach(p => {
+            const est = {D:'Disponible',R:'Reservado',P:'Pagado',A:'Anulado'}[p.Estado] || p.Estado;
+            html += `<tr>
+                <td>${p.IDPaquete}</td>
+                <td>${p.Productos}</td>
+                <td>Q${parseFloat(p.PrecioNormal || 0).toFixed(2)}</td>
+                <td>Q${parseFloat(p.PrecioOferton || 0).toFixed(2)}</td>
+                <td>${p.DiaPromoción || '—'}</td>
+                <td><strong>${p.disponible || 1}</strong></td>
+                <td class="estado-${p.Estado}">${est}</td>
+            </tr>`;
+        });
+        html += `</tbody></table>`;
+        contenedor.innerHTML = html;
+    } catch (err) {
+        contenedor.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+    }
+}
+
+async function guardarRegistro() {
+    const btn = document.getElementById('btnGuardar');
+    const prod = document.getElementById('productos').value.trim();
+    const pNorm = parseFloat(document.getElementById('precio_normal').value);
+    const pOfer = parseFloat(document.getElementById('precio_oferton').value);
+    const valorGrupo = document.getElementById('grupo').value;
+    const fechaSeleccionada = document.getElementById('dia_promocion').value;
+    const detalleTexto = document.getElementById('detalle').value;
+    const valorAlimento = document.getElementById('alimento_secuencia').value;
+    const valorDisponible = parseInt(document.getElementById('disponible').value);
+    
+    if (!nitFijo || !sucursalFija || !siguienteId || !prod || !pNorm || !pOfer) {
+        mostrarMensaje("⚠️ Completa todos los campos obligatorios", "error");
+        return;
+    }
+    if (pNorm <= pOfer) {
+        mostrarMensaje("⚠️ El Precio del Paquete Oferton debe ser menor que el Precio Normal.", "error");
+        return;
+    }
+    if (!valorGrupo) {
+        mostrarMensaje("⚠️ Debes seleccionar un horario de entrega.", "error");
+        return;
+    }
+    if (!valorAlimento) {
+        mostrarMensaje("⚠️ Debes seleccionar un tipo de alimento.", "error");
+        return;
+    }
+    if (isNaN(valorDisponible) || valorDisponible < 1) {
+        mostrarMensaje("⚠️ La cantidad disponible debe ser al menos 1.", "error");
+        return;
+    }
+    if (fechaSeleccionada) {
+        if (fechaSeleccionada < fechaMinima || fechaSeleccionada > fechaMaxima) {
+            mostrarMensaje(`⚠️ La fecha debe estar entre hoy (${fechaMinima}) y ${fechaMaxima}`, "error");
+            return;
         }
     }
-
-    async function guardarRegistro() {
-        const btn = document.getElementById('btnGuardar');
-        const prod = document.getElementById('productos').value.trim();
-        const pNorm = parseFloat(document.getElementById('precio_normal').value);
-        const pOfer = parseFloat(document.getElementById('precio_oferton').value);
-        const valorGrupo = document.getElementById('grupo').value;
-        const fechaSeleccionada = document.getElementById('dia_promocion').value;
-        const detalleTexto = document.getElementById('detalle').value;
-        const valorAlimento = document.getElementById('alimento_secuencia').value;
-        const valorDisponible = parseInt(document.getElementById('disponible').value);
-        
-        if (!nitFijo || !sucursalFija || !siguienteId || !prod || !pNorm || !pOfer) {
-            mostrarMensaje("⚠️ Completa todos los campos obligatorios", "error");
-            return;
-        }
-        if (pNorm <= pOfer) {
-            mostrarMensaje("⚠️ El Precio del Paquete Oferton debe ser menor que el Precio Normal.", "error");
-            return;
-        }
-        if (!valorGrupo) {
-            mostrarMensaje("⚠️ Debes seleccionar un horario de entrega.", "error");
-            return;
-        }
-        if (!valorAlimento) {
-            mostrarMensaje("⚠️ Debes seleccionar un tipo de alimento.", "error");
-            return;
-        }
-        if (isNaN(valorDisponible) || valorDisponible < 1) {
-            mostrarMensaje("⚠️ La cantidad disponible debe ser al menos 1.", "error");
-            return;
-        }
+    
+    btn.disabled = true;
+    btn.textContent = "Guardando...";
+    
+    try {
+        const datosInsert = {
+            NIT: nitFijo,
+            Sucursal: sucursalFija,
+            IDPaquete: siguienteId,
+            secuencia: parseInt(valorAlimento),
+            Productos: prod,
+            PrecioNormal: pNorm,
+            PrecioOferton: pOfer,
+            Estado: "D",
+            Grupo: parseInt(valorGrupo),
+            disponible: valorDisponible,
+            detalle: detalleTexto || null
+        };
         if (fechaSeleccionada) {
-            if (fechaSeleccionada < fechaMinima || fechaSeleccionada > fechaMaxima) {
-                mostrarMensaje(`⚠️ La fecha debe estar entre hoy (${fechaMinima}) y ${fechaMaxima}`, "error");
-                return;
-            }
+            datosInsert.DiaPromoción = fechaSeleccionada;
         }
         
-        btn.disabled = true;
-        btn.textContent = "Guardando...";
+        // ✅ Con /public/
+        const res = await fetch(`${API_BASE}/public/paquetes-oferton`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(datosInsert)
+        });
         
-        try {
-            const datosInsert = {
-                NIT: nitFijo,
-                Sucursal: sucursalFija,
-                IDPaquete: siguienteId,
-                secuencia: parseInt(valorAlimento),
-                Productos: prod,
-                PrecioNormal: pNorm,
-                PrecioOferton: pOfer,
-                Estado: "D",
-                Grupo: parseInt(valorGrupo),
-                disponible: valorDisponible,
-                detalle: detalleTexto || null
-            };
-            if (fechaSeleccionada) {
-                datosInsert.DiaPromoción = fechaSeleccionada;
-            }
-            
-            const res = await fetch(`${API_BASE}/paquetes-oferton`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(datosInsert)
-            });
-            
-            if (!res.ok) {
-                const resp = await res.json();
-                throw new Error(resp.detail || "Error al guardar");
-            }
-            
-            mostrarMensaje(`✅ Paquete: ${siguienteId} - Registrado exitosamente`, "exito");
-            setTimeout(() => { limpiarTodo(); }, 500);
-            
-            await cargarSiguienteId();
-            await listarPaquetes();
-        } catch (err) {
-            mostrarMensaje("❌ Error: " + err.message, "error");
-        } finally {
-            btn.disabled = false;
-            btn.textContent = "Guardar Paquete";
+        if (!res.ok) {
+            const resp = await res.json();
+            throw new Error(resp.detail || "Error al guardar");
         }
+        
+        mostrarMensaje(`✅ Paquete: ${siguienteId} - Registrado exitosamente`, "exito");
+        setTimeout(() => { limpiarTodo(); }, 500);
+        
+        await cargarSiguienteId();
+        await listarPaquetes();
+    } catch (err) {
+        mostrarMensaje("❌ Error: " + err.message, "error");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Guardar Paquete";
     }
-
+}
     function limpiarTodo() {
         document.querySelectorAll('input, select, textarea').forEach(el => {
             if(el.id !== 'nit' && el.id !== 'sucursal' && el.id !== 'id_paquete' && el.id !== 'disponible') el.value = '';
