@@ -304,6 +304,26 @@ def listar_alimentos_por_empresa(
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================================================
+# 🍽️ ALIMENTOS POR EMPRESA — PÚBLICA
+# ==================================================
+@app.get("/api/public/alimentos-por-empresa")
+def listar_alimentos_por_empresa(
+    nit: str,
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        # Trae SOLO los alimentos vinculados a esta empresa
+        respuesta = supabase.table("empresalimento")\
+            .select("secuencia, variedad")\
+            .eq("NIT", nit)\
+            .order("secuencia")\
+            .execute()
+        return {"datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================================================
 # 🏢 EMPRESAS — PROTEGIDAS (requieren sesión)
 # ==================================================
 @app.get("/api/empresas")
