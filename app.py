@@ -101,7 +101,6 @@ def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabas
             .lt("DiaPromocion", hoy_iso)\
             .execute()
         paquetes = [p for p in (res_paquetes.data or []) if str(p.get("Estado","")).strip() == "D"]
-        print(f"\n📦 Paquetes: {len(paquetes)}")
 
         if not paquetes:
             return {"datos": [], "fecha_hoy": hoy_iso, "fecha_formateada": fecha_formateada}
@@ -121,49 +120,31 @@ def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabas
             nombre_legal = (e.get("Nombre Legal") or e.get('"Nombre Legal"', "")).strip()
             mapa_emp[clave_nit] = nombre_comercial or nombre_legal or "Sin nombre"
 
-        # ==================================================
-        # 3. SUCURSALES — AQUÍ ESTÁ EL CAMBIO REAL
-        # ==================================================
-        # Probamos con TODAS las variantes hasta que dé con la correcta
-        sucursales = []
-        for nombre in ["Sucursal", "Sucursal", '"Sucursal"', "sucursal"]:
-            try:
-                res = supabase.table(nombre).select("*").execute()
-                if res.data:
-                    sucursales = res.data
-                    print(f"✅ TABLA ENCONTRADA: [{nombre}] — {len(sucursales)} filas")
-                    for s in sucursales:
-                        print(f"   Campos: {list(s.keys())}")
-                        print(f"   Valores: NIT={s.get('NIT')!r}, Sucursal={s.get('Sucursal')!r}, Localización={s.get('Localización')!r}")
-                    break
-            except Exception as err:
-                print(f"❌ [{nombre}]: {err}")
-
-        if not sucursales:
-            print("⚠️ NO se encontró la tabla con ningún nombre")
-
-        # 4. Cruce
+        # 3. Búsqueda DIRECTA por cada sucursal — NO lee toda la tabla
         resultado = []
         for p in paquetes:
-            p_nit = str(p["NIT"]).strip()
-            p_suc = str(p["Sucursal"]).strip()
+            p_nit = p["NIT"]
+            p_suc = p["Sucursal"]
             ubicacion = "Sin ubicación"
 
-            print(f"\n🔍 BUSCANDO: NIT={p_nit!r}, Sucursal={p_suc!r}")
-            for s in sucursales:
-                s_nit = str(s.get("NIT", "")).strip()
-                s_suc = str(s.get("Sucursal", "")).strip()
-                print(f"   Compara: NIT={s_nit!r}, Suc={s_suc!r}")
-
-                if s_nit == p_nit and s_suc == p_suc:
-                    ubicacion = (s.get("Localización", "") or "Sin ubicación").strip()
-                    print(f"   ✅ ENCONTRADA: {ubicacion!r}")
-                    break
+            try:
+                # Busca EXACTAMENTE la fila que necesitamos
+                res_suc = supabase.table("Sucursal")\
+                    .select("Localización")\
+                    .eq("NIT", p_nit)\
+                    .eq("Sucursal", p_suc)\
+                    .execute()
+                
+                if res_suc.data and len(res_suc.data) > 0:
+                    ubicacion = res_suc.data[0].get("Localización", "Sin ubicación").strip()
+                    print(f"✅ Encontrada: NIT={p_nit}, Suc={p_suc} → {ubicacion}")
+            except Exception as e:
+                print(f"⚠️ Búsqueda NIT={p_nit}, Suc={p_suc}: {e}")
 
             resultado.append({
-                "nit": p["NIT"],
-                "sucursal": p["Sucursal"],
-                "nombre_comercial": mapa_emp.get(p_nit, "Sin nombre"),
+                "nit": p_nit,
+                "sucursal": p_suc,
+                "nombre_comercial": mapa_emp.get(str(p_nit).strip(), "Sin nombre"),
                 "localizacion": ubicacion,
                 "total_paquetes": 1
             })
