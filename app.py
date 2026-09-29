@@ -119,22 +119,11 @@ def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabas
             nombre_legal = (e.get("Nombre Legal") or e.get('"Nombre Legal"', "")).strip()
             mapa_emp[clave_nit] = nombre_comercial or nombre_legal or "Sin nombre"
 
-        # 3. Sucursales — probamos con formato exacto con comillas
-        sucursales = []
-        for nombre_tabla in ['"Sucursal"', "Sucursal", "sucursal"]:
-            try:
-                res = supabase.table(nombre_tabla).select("*").execute()
-                if res.data:
-                    sucursales = res.data
-                    print(f"✅ TABLA ENCONTRADA: {nombre_tabla} → {len(sucursales)} filas")
-                    for s in sucursales:
-                        print(f"   → Fila: {s}")
-                    break
-            except Exception as e:
-                print(f"❌ {nombre_tabla}: {e}")
-
-        if not sucursales:
-            print("⚠️ No se encontró la tabla con ningún nombre")
+        # 3. Sucursales — NOMBRE CORRECTO: "Sucursal"
+        sucursales = supabase.table("Sucursal").select("*").execute().data or []
+        print(f"🏪 Sucursales: {len(sucursales)} filas")
+        for s in sucursales:
+            print(f"   → NIT={s.get('NIT')!r}, Sucursal={s.get('Sucursal')!r}, Localización={s.get('Localización')!r}")
 
         # 4. Cruce
         resultado = []
@@ -148,7 +137,7 @@ def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabas
                 s_suc = str(s.get("Sucursal", "")).strip()
                 if s_nit == p_nit and s_suc == p_suc:
                     ubicacion = (s.get("Localización", "") or "Sin ubicación").strip()
-                    print(f"✅ Coincidencia: NIT={p_nit}, Suc={p_suc} → {ubicacion}")
+                    print(f"✅ Coincidencia: {ubicacion!r}")
                     break
 
             resultado.append({
