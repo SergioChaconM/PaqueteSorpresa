@@ -119,16 +119,22 @@ def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabas
             nombre_legal = (e.get("Nombre Legal") or e.get('"Nombre Legal"', "")).strip()
             mapa_emp[clave_nit] = nombre_comercial or nombre_legal or "Sin nombre"
 
-        # 3. Sucursales — NOMBRE EXACTO: "Sucursal" (SIN segunda "a")
-        sucursales = (
-            supabase.table("Sucursal")
-            .select("*")
-            .execute()
-            .data or []
-        )
-        print(f"🏪 Sucursales cargadas: {len(sucursales)}")
-        for s in sucursales:
-            print(f"   → NIT={s.get('NIT')!r}, Sucursal={s.get('Sucursal')!r}, Localización={s.get('Localización')!r}")
+        # 3. Sucursales — probamos nombre exacto
+	        sucursales = []
+	        for nombre_tabla in ["Sucursal", "Sucursal", "sucursal", "Sucursal "]:
+	            try:
+	                res = supabase.table(nombre_tabla).select("*").execute()
+	                if res.data:
+	                    sucursales = res.data
+	                    print(f"✅ TABLA ENCONTRADA: [{nombre_tabla}] — {len(sucursales)} filas")
+	                    for s in sucursales:
+	                        print(f"   → Campos: {list(s.keys())}")
+ 	                   break
+	            except Exception as e:
+	                print(f"❌ [{nombre_tabla}]: {e}")
+        
+	        if not sucursales:
+	            print("⚠️ NO se encontraron sucursales con ningún nombre")
 
         # 4. Cruce
         resultado = []
