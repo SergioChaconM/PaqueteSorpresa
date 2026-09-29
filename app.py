@@ -119,37 +119,36 @@ def listar_sucursales_paquetes_anteriores(supabase: Client = Depends(get_supabas
             nombre_legal = (e.get("Nombre Legal") or e.get('"Nombre Legal"', "")).strip()
             mapa_emp[clave_nit] = nombre_comercial or nombre_legal or "Sin nombre"
 
-        # 3. Sucursales — probamos nombre exacto
-	        sucursales = []
-	        for nombre_tabla in ["Sucursal", "Sucursal", "sucursal", "Sucursal "]:
-	            try:
-	                res = supabase.table(nombre_tabla).select("*").execute()
-	                if res.data:
-	                    sucursales = res.data
-	                    print(f"✅ TABLA ENCONTRADA: [{nombre_tabla}] — {len(sucursales)} filas")
-	                    for s in sucursales:
-	                        print(f"   → Campos: {list(s.keys())}")
- 	                   break
-	            except Exception as e:
-	                print(f"❌ [{nombre_tabla}]: {e}")
-        
-	        if not sucursales:
-	            print("⚠️ NO se encontraron sucursales con ningún nombre")
+        # 3. Sucursales — probamos con formato exacto con comillas
+        sucursales = []
+        for nombre_tabla in ['"Sucursal"', "Sucursal", "sucursal"]:
+            try:
+                res = supabase.table(nombre_tabla).select("*").execute()
+                if res.data:
+                    sucursales = res.data
+                    print(f"✅ TABLA ENCONTRADA: {nombre_tabla} → {len(sucursales)} filas")
+                    for s in sucursales:
+                        print(f"   → Fila: {s}")
+                    break
+            except Exception as e:
+                print(f"❌ {nombre_tabla}: {e}")
+
+        if not sucursales:
+            print("⚠️ No se encontró la tabla con ningún nombre")
 
         # 4. Cruce
         resultado = []
         for p in paquetes:
             p_nit = str(p["NIT"]).strip()
             p_suc = str(p["Sucursal"]).strip()
-
             ubicacion = "Sin ubicación"
+
             for s in sucursales:
                 s_nit = str(s.get("NIT", "")).strip()
                 s_suc = str(s.get("Sucursal", "")).strip()
-
                 if s_nit == p_nit and s_suc == p_suc:
                     ubicacion = (s.get("Localización", "") or "Sin ubicación").strip()
-                    print(f"   ✅ Encontrada: {ubicacion!r}")
+                    print(f"✅ Coincidencia: NIT={p_nit}, Suc={p_suc} → {ubicacion}")
                     break
 
             resultado.append({
