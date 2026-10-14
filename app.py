@@ -167,8 +167,9 @@ async def pagina_sucursales_paquetes_html(request: Request):
 # ==============================================
 if __name__ == "__main__":
     import uvicorn
-    print("\n🚀 Servidor: http://127.0.0.1:8000")
-    print("📄 Principal: http://127.0.0.1:8000/")
-    print("📄 Paquetes ant: http://127.0.0.1:8000/SucursalesConPaquetesAnteriores")
-    print("🔌 API: http://127.0.0.1:8000/api/sucursales-con-paquetes-anteriores\n")
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    port = int(os.getenv("PORT", 8000))  # Usa el puerto de Render o 8000 en local
+    print(f"\n🚀 Servidor activo en puerto {port}")
+    print("📄 Principal: /")
+    print("📄 Paquetes ant: /SucursalesConPaquetesAnteriores")
+    print("🔌 API: /api/sucursales-con-paquetes-anteriores\n")
+    uvicorn.run(app, host="0.0.0.0", port=port)

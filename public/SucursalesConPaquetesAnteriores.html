@@ -159,14 +159,14 @@
 <body>
     <div class="cabecera">
         <h1>📋 Resumen de Paquetes por Empresa y Ubicación Anteriores</h1>
-        <p>Fecha de Hoy: <span id="fechaHoy"></span></p>
+	<p>Fecha de Hoy: <span id="fechahoy"></span></p>
     </div>
     <div id="contenedor">
         <p class="centro">Cargando registros...</p>
     </div>
 
 <script>
-    // 🔗 API — SIN credenciales expuestas 🔒
+    // 🔗 API
     const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
         ? "http://127.0.0.1:8000/api"
         : "/api";
@@ -178,8 +178,15 @@
             const res = await fetch(`${API_BASE}/sucursales-con-paquetes-anteriores`);
             if (!res.ok) throw new Error(`Error ${res.status}`);
             
-            const { datos, fecha_hoy } = await res.json();
-            document.getElementById('fechaHoy').textContent = fecha_hoy;
+            const respuesta = await res.json();
+            const datos = respuesta.datos || [];
+            const fechaFormateada = respuesta.fecha_formateada || respuesta.fecha_hoy;
+
+            // ✅ ID corregido: fechahoy (minúsculas)
+            const elementoFecha = document.getElementById('fechahoy');
+            if (elementoFecha) {
+                elementoFecha.textContent = fechaFormateada;
+            }
 
             if (!datos || datos.length === 0) {
                 contenedor.innerHTML = `<p class="centro aviso">📭 No hay paquetes anteriores a hoy sin comprar</p>`;
@@ -220,12 +227,12 @@
             contenedor.innerHTML = html;
             
             console.log(`✅ Grupos formados: ${datos.length}`);
+            console.log(`📅 Fecha: ${fechaFormateada}`);
         } catch (err) {
             contenedor.innerHTML = `<p class="centro error">❌ ${err.message}</p>`;
             console.error("❌ Error:", err);
         }
     }
-
     document.addEventListener('DOMContentLoaded', cargar);
 </script>
 </body>

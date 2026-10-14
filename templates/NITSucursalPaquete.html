@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organiza - Horario Entrega</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { background-color: #f0f4f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .contenedor { background: white; padding: 2.5rem; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 420px; }
+        h2 { color: #2c3e50; text-align: center; margin-bottom: 1.2rem; }
+        .mensaje-conteo { text-align: center; color: #27ae60; margin-bottom: 1.5rem; font-size: 0.95rem; padding: 0.5rem; background: #f0f9f4; border-radius: 5px; }
+        .grupo-campo { margin-bottom: 1.5rem; }
+        label { display: block; margin-bottom: 0.5rem; color: #34495e; font-weight: 500; }
+        select { width: 100%; padding: 0.8rem; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 1rem; background: white; cursor: pointer; }
+        select:disabled { background-color: #f8f9fa; cursor: not-allowed; opacity: 0.7; }
+        select:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.2); }
+        button { width: 100%; padding: 0.9rem; background-color: #27ae60; color: white; border: none; border-radius: 6px; font-size: 1.1rem; font-weight: 500; cursor: pointer; transition: background 0.3s; }
+        button:hover { background-color: #219653; }
+        .error { color: #e74c3c; margin-top: 0.5rem; font-size: 0.9rem; display: none; }
+        #cargando { text-align:center; margin-bottom:1rem; color:#3498db; padding: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="contenedor">
+        <h2>Parámetros de la Sucursal</h2>
+        <div id="cargando">🔄 Cargando datos...</div>
+        <div id="mensajeConteo" class="mensaje-conteo" style="display: none;"></div>
+        
+        <form id="formIngreso" style="display: none;">
+            <div class="grupo-campo">
+                <label for="nit">Empresa (NIT - Nombre Legal)</label>
+                <select id="nit" name="nit" required>
+                    <option value="">Seleccione una empresa</option>
+                </select>
+                <div class="error" id="errorNit">Debe seleccionar una empresa</div>
+            </div>
+            <div class="grupo-campo">
+                <label for="sucursal">Sucursal (Código - Localización)</label>
+                <select id="sucursal" name="sucursal" required disabled>
+                    <option value="">Primero seleccione una empresa</option>
+                </select>
+                <div class="error" id="errorSucursal">Debe seleccionar una sucursal válida</div>
+            </div>
+            <button type="submit">Continuar al Mantenimiento</button>
+        </form>
+    </div>
+
+<script>
+const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+    ? "http://127.0.0.1:8000/api"
+    : "/api";
+
+function mostrarError(mensaje) {
+    document.getElementById('cargando').innerHTML = `<p style="color:#e74c3c; padding:1rem;">❌ ${mensaje}</p>`;
+}
+
+function mostrarFormulario() {
+    document.getElementById('cargando').style.display = 'none';
+    document.getElementById('formIngreso').style.display = 'block';
+}
+
+async function cargarEmpresas() {
+    try {
+        console.log("🔍 Cargando empresas desde:", `${API_BASE}/public/empresas`);
+        const res = await fetch(`${API_BASE}/public/empresas`);
+        
+        if (!res.ok) throw new Error(`Servidor respondió: ${res.status}`);
+        
+        const { datos } = await res.json();
+        
+        if (!datos || datos.length === 0) {
+            mostrarError("No hay empresas registradas en Supabase");
+            return false;
+        }
+        
+        document.getElementById('mensajeConteo').textContent = `✅ Existen ${datos.length} empresas registradas`;
+        document.getElementById('mensajeConteo').style.display = 'block';
+        
+        const selectNit = document.getElementById('nit');
+        selectNit.innerHTML = '<option value="">Seleccione una empresa</option>';
+        datos.forEach(item => {
+            const opcion = document.createElement('option');
+            opcion.value = item.NIT;
+            opcion.textContent = `${item.NIT} - ${item["Nombre Legal"] || 'Sin nombre'}`;
+            selectNit.appendChild(opcion);
+        });
+        
+        selectNit.addEventListener('change', async function() {
+            const selectSuc = document.getElementById('sucursal');
+            if (this.value) {
+                selectSuc.innerHTML = '<option value="">Cargando sucursales...</option>';
+                await cargarSucursales(this.value);
+                selectSuc.disabled = false;
+            } else {
+                selectSuc.disabled = true;
+                selectSuc.innerHTML = '<option value="">Primero seleccione una empresa</option>';
+                document.getElementById('mensajeConteo').style.display = 'none';
+            }
+        });
+        
+        mostrarFormulario();
+        return true;
+        
+    } catch (err) {
+        console.error('Error completo:', err);
+        mostrarError(`No se pudo conectar: ${err.message}<br>Verifica que el servidor esté activo en el puerto 8000`);
+        return false;
+    }
+}
+
+async function cargarSucursales(nitEmpresa) {
+    try {
+        const res = await fetch(`${API_BASE}/public/sucursales?nit=${encodeURIComponent(nitEmpresa)}`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        
+        const { datos } = await res.json();
+        const selectSucursal = document.getElementById('sucursal');
+        selectSucursal.innerHTML = '<option value="">Seleccione una sucursal</option>';
+        
+        if (!datos.length) {
+            alert("⚠️ Esta empresa no tiene sucursales registradas");
+            return;
+        }
+        
+        datos.forEach(item => {
+            const opcion = document.createElement('option');
+            opcion.value = item.Sucursal;
+            opcion.textContent = `${item.Sucursal} - ${item.Localización || 'Sin ubicación'}`;
+            selectSucursal.appendChild(opcion);
+        });
+        
+        document.getElementById('mensajeConteo').textContent = `✅ ${datos.length} sucursales disponibles`;
+        document.getElementById('mensajeConteo').style.display = 'block';
+        
+    } catch (err) {
+        console.error('Error Sucursales:', err);
+        alert(`Error al cargar sucursales: ${err.message}`);
+    }
+}
+
+async function iniciar() {
+    document.getElementById('cargando').style.display = 'block';
+    await cargarEmpresas();
+}
+
+window.addEventListener('load', iniciar);
+
+const form = document.getElementById('formIngreso');
+form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const nit = document.getElementById('nit').value;
+    const sucursal = document.getElementById('sucursal').value;
+    let valido = true;
+    
+    if (!nit) {
+        document.getElementById('errorNit').style.display = 'block';
+        valido = false;
+    } else {
+        document.getElementById('errorNit').style.display = 'none';
+    }
+    if (!sucursal) {
+        document.getElementById('errorSucursal').style.display = 'block';
+        valido = false;
+    } else {
+        document.getElementById('errorSucursal').style.display = 'none';
+    }
+    
+    if (valido) {
+        window.location.href = `CrearPaquetonesSorpresa.html?nit=${encodeURIComponent(nit)}&sucursal=${encodeURIComponent(sucursal)}`;
+    }
+});
+</script>
+</body>
+</html>

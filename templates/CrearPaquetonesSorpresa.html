@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar Nuevo Paquete Oferton</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body {
+            position: relative;
+            min-height: 100vh;
+            background-color: #f0f4f8;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            background-image: url('https://images.unsplash.com/photo-1556740738-b6a63e27c4df?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(1px);
+        }
+        #app {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            width: 95%;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        .encabezado-linea {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .btn-volver-cabecera {
+            background-color: #64748b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.6rem 1.4rem;
+            cursor: pointer;
+            font-size: 1rem;
+            white-space: nowrap;
+        }
+        .btn-volver-cabecera:hover { background-color: #475569; }
+        .encabezado-linea h2 {
+            color: #166534;
+            margin: 0;
+            font-size: 1.35rem;
+        }
+        .contenedor-form {
+            background: rgba(240, 253, 244, 0.98);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border: 1px solid #bbf7d0;
+            margin-bottom: 1.5rem;
+        }
+        .fila {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem 1.8rem;
+            margin-bottom: 1rem;
+        }
+        .campo {
+            display: flex;
+            flex-direction: column;
+        }
+        .campo.ancho-completo {
+            grid-column: 1 / -1;
+        }
+        .campo.oculto { display: none !important; }
+        label {
+            margin-bottom: 0.35rem;
+            color: #14532d;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        input, select, textarea {
+            padding: 0.65rem 0.8rem;
+            border: 1px solid #86efac;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            width: 100%;
+            background: #ffffff;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #22c55e;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+        }
+        input[readonly] {
+            background: #f0fdf4;
+            color: #166534;
+            cursor: not-allowed;
+            font-weight: 500;
+        }
+        textarea { resize: vertical; min-height: 80px; }
+        .info {
+            font-size: 0.8rem;
+            color: #15803d;
+            margin-top: 0.25rem;
+            font-style: italic;
+        }
+        .contenedor-botones {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #bbf7d0;
+        }
+        button {
+            padding: 0.7rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            min-width: 120px;
+        }
+        .btn-guardar { background-color: #22c55e; color: white; }
+        .btn-guardar:hover { background-color: #16a34a; }
+        .btn-limpiar { background-color: #f59e0b; color: white; }
+        .btn-limpiar:hover { background-color: #d97706; }
+        #mensaje {
+            margin-top: 1.2rem;
+            padding: 0.9rem 1.2rem;
+            border-radius: 6px;
+            display: none;
+            font-weight: 500;
+        }
+        .exito { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; display: block; }
+        .error { background-color: #fee2e2; color: #dc2626; border: 1px solid #fecaca; display: block; }
+        .tabla-registros {
+            background: rgba(255, 255, 255, 0.96);
+            padding: 1.8rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        .tabla-registros h3 {
+            color: #166534;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 0.7rem;
+            text-align: left;
+            vertical-align: middle;
+        }
+        th { background: #f8fafc; color: #166534; font-weight: bold; }
+        tbody tr:nth-child(even) { background-color: #f0fdf4; }
+        tbody tr:nth-child(odd) { background-color: #ffffff; }
+        tbody tr:hover { background-color: #dcfce7; }
+        .estado-D { color: #166534; font-weight: bold; }
+        .estado-R { color: #ca8a04; font-weight: bold; }
+        .estado-P { color: #2563eb; font-weight: bold; }
+        .estado-A { color: #dc2626; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="encabezado-linea">
+        <button type="button" class="btn-volver-cabecera" onclick="window.location.href='index.html'">« Volver</button>
+        <h2 id="tituloPagina">Registrar Nuevo Paquete Oferton</h2>
+    </div>
+    <div class="contenedor-form">
+        <div class="campo oculto">
+            <label>NIT *:</label>
+            <input type="text" id="nit" readonly>
+        </div>
+        <div class="campo oculto">
+            <label>Sucursal *:</label>
+            <input type="number" id="sucursal" readonly>
+        </div>
+        <div class="fila">
+            <div class="campo">
+                <label>ID Paquete *:</label>
+                <input type="number" id="id_paquete" readonly>
+            </div>
+            <div class="campo">
+                <label>Productos *:</label>
+                <input type="text" id="productos" required placeholder="Descripción de los productos...">
+            </div>
+        </div>
+        <div class="fila">
+            <div class="campo">
+                <label>Precio Normal (Q) *:</label>
+                <input type="number" step="0.01" id="precio_normal" required placeholder="0.00">
+            </div>
+            <div class="campo">
+                <label>Precio Oferton (Q) *:</label>
+                <input type="number" step="0.01" id="precio_oferton" required placeholder="0.00">
+            </div>
+        </div>
+        <div class="fila">
+            <div class="campo">
+                <label>Día de Promoción:</label>
+                <input type="date" id="dia_promocion">
+                <div class="info">Solo hoy o hasta 6 días adelante</div>
+            </div>
+            <div class="campo">
+                <label>Cantidad Disponible:</label>
+                <input type="number" min="1" id="disponible" value="1">
+                <div class="info">Valor por defecto: 1</div>
+            </div>
+        </div>
+        <div class="fila">
+            <div class="campo">
+                <label>Grupo / Horario *:</label>
+                <select id="grupo" required>
+                    <option value="">-- Cargando horarios --</option>
+                </select>
+                <div class="info">Horarios disponibles según sucursal</div>
+            </div>
+            <div class="campo">
+                <label>Tipo de Alimento *:</label>
+                <select id="alimento_secuencia" required>
+                    <option value="">-- Cargando alimentos --</option>
+                </select>
+                <div class="info">Alimentos disponibles para esta empresa</div>
+            </div>
+        </div>
+        <div class="fila">
+            <div class="campo ancho-completo">
+                <label>Detalle / Observaciones:</label>
+                <textarea id="detalle" placeholder="Información adicional, observaciones..."></textarea>
+                <div class="info">Puedes usar "Enter" para saltos de línea</div>
+            </div>
+        </div>
+        <div class="fila">
+            <div class="campo">
+                <label>Estado:</label>
+                <input type="text" value="Disponible (D)" readonly>
+                <div class="info">Valor asignado automáticamente</div>
+            </div>
+            <div></div>
+        </div>
+        <div class="contenedor-botones">
+            <button id="btnGuardar" class="btn-guardar" onclick="guardarRegistro()">Guardar Paquete</button>
+            <button class="btn-limpiar" onclick="limpiarTodo()">Limpiar</button>
+        </div>
+        <div id="mensaje"></div>
+    </div>
+    <div class="tabla-registros">
+        <h3>📋 Paquetes Registrados para esta Empresa y Sucursal</h3>
+        <div id="listadoPaquetes">Cargando registros...</div>
+    </div>
+</div>
+
+<script>
+    // 🔗 API — SIN credenciales expuestas 🔒
+    const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+        ? "http://127.0.0.1:8000/api"
+        : "/api";
+
+    let nitFijo = '';
+    let sucursalFija = 0;
+    let siguienteId = 1;
+    let fechaMinima = '';
+    let fechaMaxima = '';
+
+    function formatearFechaISO(fecha) {
+        const anio = fecha.getFullYear();
+        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+        const dia = String(fecha.getDate()).padStart(2, '0');
+        return `${anio}-${mes}-${dia}`;
+    }
+
+    function inicializarRangoFechas() {
+        const hoy = new Date();
+        const max = new Date();
+        max.setDate(hoy.getDate() + 6);
+        fechaMinima = formatearFechaISO(hoy);
+        fechaMaxima = formatearFechaISO(max);
+        const campoFecha = document.getElementById('dia_promocion');
+        campoFecha.min = fechaMinima;
+        campoFecha.max = fechaMaxima;
+    }
+
+    function mostrarMensaje(texto, tipo) {
+        const m = document.getElementById('mensaje');
+        m.textContent = texto;
+        m.className = tipo;
+        m.style.display = 'block';
+    }
+
+async function cargarHorariosEntrega() {
+    try {
+        // ✅ Agregado /public/
+        const res = await fetch(`${API_BASE}/public/horarios?nit=${encodeURIComponent(nitFijo)}&sucursal=${sucursalFija}`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const { datos } = await res.json();
+        
+        const selectGrupo = document.getElementById('grupo');
+        selectGrupo.innerHTML = '<option value="">-- Seleccione un horario --</option>';
+        if (datos && datos.length > 0) {
+            datos.forEach(fila => {
+                const opcion = document.createElement('option');
+                opcion.value = fila.grupo;
+                opcion.textContent = fila.entrega || `Grupo ${fila.grupo}`;
+                selectGrupo.appendChild(opcion);
+            });
+        } else {
+            selectGrupo.innerHTML = '<option value="">⚠️ No hay horarios registrados</option>';
+        }
+    } catch (err) {
+        console.error("❌ Error cargando horarios:", err.message);
+        document.getElementById('grupo').innerHTML = '<option value="">Error al cargar</option>';
+    }
+}
+
+async function cargarAlimentos() {
+    try {
+        const res = await fetch(
+            `${API_BASE}/public/alimentos-por-empresa?nit=${encodeURIComponent(nitFijo)}`
+        );
+        
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const { datos } = await res.json();
+        
+        const selectAlimento = document.getElementById('alimento_secuencia');
+        selectAlimento.innerHTML = '<option value="">-- Seleccione tipo de alimento --</option>';
+        
+        if (datos && datos.length > 0) {
+            datos.forEach(fila => {
+                const opcion = document.createElement('option');
+                opcion.value = fila.secuencia;
+                opcion.textContent = `${fila.secuencia} — ${fila.variedad || 'Sin nombre'}`;
+                selectAlimento.appendChild(opcion);
+            });
+        } else {
+            selectAlimento.innerHTML = '<option value="">⚠️ No hay alimentos asignados</option>';
+        }
+    } catch (err) {
+        console.error("❌ Error:", err.message);
+        document.getElementById('alimento_secuencia').innerHTML = '<option value="">Error al cargar</option>';
+    }
+}
+
+async function cargarDatosSucursal() {
+    try {
+        // ✅ Ruta corregida: usamos /public/sucursales
+        const res = await fetch(`${API_BASE}/public/sucursales?nit=${encodeURIComponent(nitFijo)}`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const { datos } = await res.json();
+        
+        const suc = datos.find(s => s.Sucursal === sucursalFija);
+        
+        const titulo = document.getElementById('tituloPagina');
+        if (suc && suc.Localización) {
+            titulo.textContent = `Registrar Nuevo Paquete Oferton — ${suc.Localización}`;
+        } else {
+            titulo.textContent = `Registrar Nuevo Paquete Oferton — Sucursal ${sucursalFija}`;
+        }
+    } catch (err) {
+        console.error("Error datos sucursal:", err);
+        document.getElementById('tituloPagina').textContent = 
+            `Registrar Nuevo Paquete Oferton — Sucursal ${sucursalFija}`;
+    }
+}
+
+async function cargarSiguienteId() {
+    try {
+        // ✅ Con /public/
+        const res = await fetch(`${API_BASE}/public/paquetes-oferton/siguiente-id?nit=${encodeURIComponent(nitFijo)}&sucursal=${sucursalFija}`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const { siguiente_id } = await res.json();
+        siguienteId = siguiente_id;
+        document.getElementById('id_paquete').value = siguienteId;
+    } catch (err) {
+        siguienteId = 1;
+        document.getElementById('id_paquete').value = 1;
+    }
+}
+
+async function listarPaquetes() {
+    const contenedor = document.getElementById('listadoPaquetes');
+    contenedor.innerHTML = 'Cargando registros...';
+    
+    try {
+        // ✅ Con /public/
+        const res = await fetch(`${API_BASE}/public/paquetes-oferton?nit=${encodeURIComponent(nitFijo)}&sucursal=${sucursalFija}`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const { datos } = await res.json();
+        
+        if (!datos || datos.length === 0) {
+            contenedor.innerHTML = '<p style="color:#15803d;">ℹ️ No hay paquetes registrados aún para esta sucursal.</p>';
+            return;
+        }
+        
+        let html = `<table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Productos</th>
+                    <th>Precio Normal</th>
+                    <th>Precio Oferton</th>
+                    <th>Día Promoción</th>
+                    <th>Cantidad Disponible</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>`;
+        datos.forEach(p => {
+            const est = {D:'Disponible',R:'Reservado',P:'Pagado',A:'Anulado'}[p.Estado] || p.Estado;
+            html += `<tr>
+                <td>${p.IDPaquete}</td>
+                <td>${p.Productos}</td>
+                <td>Q${parseFloat(p.PrecioNormal || 0).toFixed(2)}</td>
+                <td>Q${parseFloat(p.PrecioOferton || 0).toFixed(2)}</td>
+                <td>${p.DiaPromocion || '—'}</td>
+                <td><strong>${p.disponible || 1}</strong></td>
+                <td class="estado-${p.Estado}">${est}</td>
+            </tr>`;
+        });
+        html += `</tbody></table>`;
+        contenedor.innerHTML = html;
+    } catch (err) {
+        contenedor.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+    }
+}
+
+async function guardarRegistro() {
+    const btn = document.getElementById('btnGuardar');
+    const prod = document.getElementById('productos').value.trim();
+    const pNorm = parseFloat(document.getElementById('precio_normal').value);
+    const pOfer = parseFloat(document.getElementById('precio_oferton').value);
+    const valorGrupo = document.getElementById('grupo').value;
+    const fechaSeleccionada = document.getElementById('dia_promocion').value;
+    const detalleTexto = document.getElementById('detalle').value;
+    const valorAlimento = document.getElementById('alimento_secuencia').value;
+    const valorDisponible = parseInt(document.getElementById('disponible').value);
+    
+    if (!nitFijo || !sucursalFija || !siguienteId || !prod || !pNorm || !pOfer) {
+        mostrarMensaje("⚠️ Completa todos los campos obligatorios", "error");
+        return;
+    }
+    if (pNorm <= pOfer) {
+        mostrarMensaje("⚠️ El Precio del Paquete Oferton debe ser menor que el Precio Normal.", "error");
+        return;
+    }
+    if (!valorGrupo) {
+        mostrarMensaje("⚠️ Debes seleccionar un horario de entrega.", "error");
+        return;
+    }
+    if (!valorAlimento) {
+        mostrarMensaje("⚠️ Debes seleccionar un tipo de alimento.", "error");
+        return;
+    }
+    if (isNaN(valorDisponible) || valorDisponible < 1) {
+        mostrarMensaje("⚠️ La cantidad disponible debe ser al menos 1.", "error");
+        return;
+    }
+    if (fechaSeleccionada) {
+        if (fechaSeleccionada < fechaMinima || fechaSeleccionada > fechaMaxima) {
+            mostrarMensaje(`⚠️ La fecha debe estar entre hoy (${fechaMinima}) y ${fechaMaxima}`, "error");
+            return;
+        }
+    }
+    
+    btn.disabled = true;
+    btn.textContent = "Guardando...";
+    
+    try {
+        const datosInsert = {
+            NIT: nitFijo,
+            Sucursal: sucursalFija,
+            IDPaquete: siguienteId,
+            secuencia: parseInt(valorAlimento),
+            Productos: prod,
+            PrecioNormal: pNorm,
+            PrecioOferton: pOfer,
+            Estado: "D",
+            Grupo: parseInt(valorGrupo),
+            disponible: valorDisponible,
+            detalle: detalleTexto || null
+        };
+        // ✅ CORREGIDO: notación con corchetes para el nombre con tilde
+        if (fechaSeleccionada) {
+            datosInsert["DiaPromocion"] = fechaSeleccionada;
+        }
+        
+        const res = await fetch(`${API_BASE}/public/paquetes-oferton`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(datosInsert)
+        });
+        
+        if (!res.ok) {
+            const resp = await res.json();
+            throw new Error(resp.detail || "Error al guardar");
+        }
+        
+        mostrarMensaje(`✅ Paquete: ${siguienteId} - Registrado exitosamente`, "exito");
+        setTimeout(() => { limpiarTodo(); }, 500);
+        
+        await cargarSiguienteId();
+        await listarPaquetes();
+    } catch (err) {
+        mostrarMensaje("❌ Error: " + err.message, "error");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Guardar Paquete";
+    }
+}
+    function limpiarTodo() {
+        document.querySelectorAll('input, select, textarea').forEach(el => {
+            if(el.id !== 'nit' && el.id !== 'sucursal' && el.id !== 'id_paquete' && el.id !== 'disponible') el.value = '';
+        });
+        document.getElementById('disponible').value = '1';
+        document.getElementById('mensaje').style.display = 'none';
+    }
+
+    function volverAtras() {
+        history.back();
+    }
+
+    // 🚀 Iniciar
+    document.addEventListener('DOMContentLoaded', async function() {
+        const params = new URLSearchParams(window.location.search);
+        const valorNit = params.get('nit');
+        const valorSuc = params.get('sucursal');
+        
+        if (!valorNit || !valorSuc) {
+            document.getElementById('listadoPaquetes').innerHTML = '<p style="color:red;">No se puede cargar sin los parámetros.</p>';
+            return;
+        }
+        
+        nitFijo = valorNit.trim();
+        sucursalFija = parseInt(valorSuc.trim());
+        document.getElementById('nit').value = nitFijo;
+        document.getElementById('sucursal').value = sucursalFija;
+        
+        inicializarRangoFechas();
+        await cargarDatosSucursal();
+        await cargarSiguienteId();
+        await cargarHorariosEntrega();
+        await cargarAlimentos();
+        await listarPaquetes();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso al Control de Horarios de Entrega</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { background-color: #f0f4f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; }
+        .contenedor { background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 450px; }
+        h2 { color: #2c3e50; text-align: center; margin-bottom: 1.5rem; font-size: 1.4rem; }
+        .estado { text-align: center; padding: 0.8rem; border-radius: 8px; margin-bottom: 1.2rem; font-size: 0.95rem; }
+        .estado.cargando { background: #eaf4ff; color: #2980b9; }
+        .estado.exito { background: #e8f8f5; color: #27ae60; }
+        .estado.error { background: #fdeaea; color: #c0392b; }
+        .grupo-campo { margin-bottom: 1.3rem; }
+        label { display: block; margin-bottom: 0.5rem; color: #34495e; font-weight: 600; font-size: 0.9rem; }
+        input, select { width: 100%; padding: 0.9rem; border: 1px solid #d0d7de; border-radius: 8px; font-size: 1rem; background: #fff; }
+        input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+        button { width: 100%; padding: 0.95rem; background-color: #27ae60; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem; }
+        button:hover { background-color: #219653; }
+        button:disabled { background: #95a5a6; cursor: not-allowed; }
+        .mensaje-error { color: #e74c3c; margin-top: 0.4rem; font-size: 0.85rem; display: none; }
+        .paso { display: none; }
+        .paso.activo { display: block; }
+    </style>
+</head>
+<body>
+    <div class="contenedor">
+        <h2>Selección de Empresa y Sucursal</h2>
+        
+        <!-- PASO 1: Inicio de sesión -->
+        <div id="pasoAcceso" class="paso activo">
+            <div id="estadoAcceso" class="estado cargando">🔑 Conectando con el sistema...</div>
+            <div class="grupo-campo">
+                <label for="correo">Correo electrónico</label>
+                <input type="email" id="correo" placeholder="tu@ejemplo.com">
+            </div>
+            <div class="grupo-campo">
+                <label for="clave">Contraseña</label>
+                <input type="password" id="clave" placeholder="••••••••">
+            </div>
+            <button id="btnAcceder">Iniciar sesión</button>
+        </div>
+
+        <!-- PASO 2: Selección -->
+        <div id="pasoSeleccion" class="paso">
+            <div id="estadoCarga" class="estado cargando">📊 Cargando empresas...</div>
+            <form id="formSeleccion" style="display: none;">
+                <div class="grupo-campo">
+                    <label for="nit">Empresa</label>
+                    <select id="nit" name="nit" required>
+                        <option value="">Seleccione una empresa</option>
+                    </select>
+                    <div class="mensaje-error" id="errorNit">Debe seleccionar una empresa</div>
+                </div>
+                <div class="grupo-campo">
+                    <label for="sucursal">Sucursal</label>
+                    <select id="sucursal" name="sucursal" required disabled>
+                        <option value="">Primero seleccione una empresa</option>
+                    </select>
+                    <div class="mensaje-error" id="errorSucursal">Debe seleccionar una sucursal</div>
+                </div>
+                <button type="submit" id="btnContinuar" disabled>Continuar</button>
+            </form>
+        </div>
+    </div>
+
+<script>
+    // ==============================================
+    // CONFIGURACIÓN — PEGA TU CLAVE AQUÍ
+    // ==============================================
+    const SUPABASE_URL = "https://swwodfpirqvwliuiswup.supabase.co";
+    
+    // ⚠️ Ve a: Supabase → Settings → API → Publishable key
+    // Copia la que empieza por: sb_publishable_...
+    const SUPABASE_ANON_KEY = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
+
+    // ✅ Cliente con nombre distinto → SIN CONFLICTO
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: false
+        }
+    });
+
+    // Elementos
+    const pasoAcceso = document.getElementById('pasoAcceso');
+    const pasoSeleccion = document.getElementById('pasoSeleccion');
+    const estadoAcceso = document.getElementById('estadoAcceso');
+    const estadoCarga = document.getElementById('estadoCarga');
+    const correoInput = document.getElementById('correo');
+    const claveInput = document.getElementById('clave');
+    const btnAcceder = document.getElementById('btnAcceder');
+    const nitSelect = document.getElementById('nit');
+    const sucursalSelect = document.getElementById('sucursal');
+    const btnContinuar = document.getElementById('btnContinuar');
+    const formEl = document.getElementById('formSeleccion');
+
+    // Cambiar de pantalla
+    function cambiarPaso(pasoActivo) {
+        document.querySelectorAll('.paso').forEach(p => p.classList.remove('activo'));
+        pasoActivo.classList.add('activo');
+    }
+
+    // Mostrar mensaje
+    function mostrarEstado(el, texto, tipo = 'cargando') {
+        el.className = `estado ${tipo}`;
+        el.textContent = texto;
+        el.style.display = 'block';
+    }
+
+    // Iniciar sesión
+    btnAcceder.addEventListener('click', async () => {
+        const email = correoInput.value.trim();
+        const password = claveInput.value;
+
+        if (!email || !password) {
+            mostrarEstado(estadoAcceso, 'Completa correo y contraseña', 'error');
+            return;
+        }
+
+        btnAcceder.disabled = true;
+        mostrarEstado(estadoAcceso, 'Verificando credenciales...');
+
+        try {
+            const { data, error } = await supabaseClient.auth.sign_in_with_password({ email, password });
+            if (error) throw error;
+
+            mostrarEstado(estadoAcceso, '✅ Sesión verificada', 'exito');
+            
+            setTimeout(() => {
+                cambiarPaso(pasoSeleccion);
+                cargarEmpresas();
+            }, 800);
+        } catch (err) {
+            mostrarEstado(estadoAcceso, `❌ ${err.message}`, 'error');
+            btnAcceder.disabled = false;
+        }
+    });
+
+    // Cargar empresas
+    async function cargarEmpresas() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('Empresa')
+                .select('NIT, "Nombre Legal"')
+                .order('NIT', { ascending: true });
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                mostrarEstado(estadoCarga, 'No hay empresas registradas', 'error');
+                return;
+            }
+
+            mostrarEstado(estadoCarga, `✅ ${data.length} empresa(s) cargada(s)`, 'exito');
+            setTimeout(() => estadoCarga.style.display = 'none', 1500);
+            formEl.style.display = 'block';
+
+            data.forEach(emp => {
+                const op = document.createElement('option');
+                op.value = emp.NIT;
+                op.textContent = `${emp.NIT} — ${emp["Nombre Legal"] || 'Sin nombre'}`;
+                nitSelect.appendChild(op);
+            });
+        } catch (err) {
+            mostrarEstado(estadoCarga, `❌ ${err.message}`, 'error');
+        }
+    }
+
+    // Cargar sucursales
+    nitSelect.addEventListener('change', async (e) => {
+        const nit = e.target.value;
+        btnContinuar.disabled = true;
+        sucursalSelect.innerHTML = '<option value="">Cargando sucursales...</option>';
+        sucursalSelect.disabled = !nit;
+
+        if (!nit) return;
+
+        try {
+            const { data, error } = await supabaseClient
+                .from('Sucursal')
+                .select('Sucursal, Localización')
+                .eq('NIT', nit)
+                .order('Sucursal', { ascending: true });
+
+            if (error) throw error;
+
+            sucursalSelect.innerHTML = '<option value="">Seleccione una sucursal</option>';
+            if (!data || data.length === 0) {
+                sucursalSelect.innerHTML = '<option value="" disabled>No hay sucursales</option>';
+                return;
+            }
+
+            data.forEach(suc => {
+                const op = document.createElement('option');
+                op.value = suc.Sucursal;
+                op.textContent = `${suc.Sucursal} — ${suc.Localización || 'Sin ubicación'}`;
+                sucursalSelect.appendChild(op);
+            });
+            sucursalSelect.disabled = false;
+        } catch (err) {
+            sucursalSelect.innerHTML = `<option value="">Error: ${err.message}</option>`;
+        }
+    });
+
+    sucursalSelect.addEventListener('change', (e) => {
+        btnContinuar.disabled = !e.target.value;
+    });
+
+    formEl.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const nit = nitSelect.value;
+        const suc = sucursalSelect.value;
+        if (!nit || !suc) return;
+        window.location.href = `MantenimientoHorarioEntrega.html?nit=${encodeURIComponent(nit)}&sucursal=${encodeURIComponent(suc)}`;
+    });
+
+    // Verificar clave al iniciar
+    window.addEventListener('load', () => {
+        if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === "sb_publishable_...") {
+            mostrarEstado(estadoAcceso, '⚠️ Falta pegar tu clave API', 'error');
+        } else {
+            mostrarEstado(estadoAcceso, 'Escribe tus credenciales para continuar', 'exito');
+        }
+    });
+</script>
+</body>
+</html>
