@@ -38,10 +38,8 @@
         </form>
     </div>
 
-    <!-- ✅ Conexión a Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // 🔑 Configuración de Supabase
         const supabaseUrl = 'https://swwodfpirqvwliuiswup.supabase.co';
         const supabaseKey = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
         const clienteSupabase = supabase.createClient(supabaseUrl, supabaseKey, {
@@ -54,12 +52,12 @@
             cargarEmpresas();
         }
 
-        // ✅ Lee DIRECTAMENTE desde Supabase — sin pasar por la API
         async function cargarEmpresas() {
             try {
+                // ✅ Nombres EXACTOS de la tabla con espacios entre comillas
                 const { data, error } = await clienteSupabase
                     .from("Empresa")
-                    .select("NIT, Nombre Legal")
+                    .select('NIT, "Nombre Legal"')
                     .order("NIT", { ascending: true });
 
                 if (error) throw error;
@@ -79,12 +77,12 @@
                 data.forEach(item => {
                     let opcion = document.createElement('option');
                     opcion.value = item.NIT;
-                    opcion.textContent = `${item.NIT} - ${item["Nombre Legal"] || 'Sin nombre'}`;
+                    opcion.textContent = `${item.NIT} - ${item["Nombre Legal"]}`;
                     selectNit.appendChild(opcion);
                 });
 
             } catch (err) {
-                console.error('Error:', err);
+                console.error('Error completo:', err);
                 document.getElementById('mensajeConteo').textContent = `⚠️ No se pudo cargar: ${err.message}`;
                 document.getElementById('mensajeConteo').style.display = 'block';
             }
