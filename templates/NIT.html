@@ -38,54 +38,71 @@
         </form>
     </div>
 
-<script>
-    const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
-        ? "http://127.0.0.1:8000/api"
-        : "/api";
+    <!-- ✅ Conexión a Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // 🔑 Configuración de Supabase
+        const supabaseUrl = 'https://swwodfpirqvwliuiswup.supabase.co';
+        const supabaseKey = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
+        const clienteSupabase = supabase.createClient(supabaseUrl, supabaseKey, {
+            auth: { storage: localStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
+        });
 
-    function mostrarSistema() {
-        document.getElementById('cargando').style.display = 'none';
-        document.getElementById('formIngreso').style.display = 'block';
-        cargarEmpresas();
-    }
-
-    async function cargarEmpresas() {
-        try {
-            const res = await fetch(`${API_BASE}/empresas`);
-            if (!res.ok) throw new Error(`Error ${res.status}`);
-            const { datos } = await res.json();
-            
-            document.getElementById('mensajeConteo').textContent = `✅ Existen ${datos.length} empresas registradas`;
-            document.getElementById('mensajeConteo').style.display = 'block';
-            
-            const selectNit = document.getElementById('nit');
-            selectNit.innerHTML = '<option value="">Seleccione una empresa</option>';
-            datos.forEach(item => {
-                let opcion = document.createElement('option');
-                opcion.value = item.NIT;
-                opcion.textContent = `${item.NIT} - ${item["Nombre Legal"] || 'Sin nombre'}`;
-                selectNit.appendChild(opcion);
-            });
-        } catch (err) {
-            console.error('Error:', err);
-            document.getElementById('mensajeConteo').textContent = `⚠️ No se pudo cargar: ${err.message}`;
-            document.getElementById('mensajeConteo').style.display = 'block';
+        function mostrarSistema() {
+            document.getElementById('cargando').style.display = 'none';
+            document.getElementById('formIngreso').style.display = 'block';
+            cargarEmpresas();
         }
-    }
 
-    window.addEventListener('load', mostrarSistema);
+        // ✅ Lee DIRECTAMENTE desde Supabase — sin pasar por la API
+        async function cargarEmpresas() {
+            try {
+                const { data, error } = await clienteSupabase
+                    .from("Empresa")
+                    .select("NIT, Nombre Legal")
+                    .order("NIT", { ascending: true });
 
-    const form = document.getElementById('formIngreso');
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const nit = document.getElementById('nit').value;
-        if (!nit) {
-            document.getElementById('errorNit').style.display = 'block';
-            return;
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    document.getElementById('mensajeConteo').textContent = "⚠️ No hay empresas registradas";
+                    document.getElementById('mensajeConteo').style.display = 'block';
+                    return;
+                }
+
+                document.getElementById('mensajeConteo').textContent = `✅ Existen ${data.length} empresas registradas`;
+                document.getElementById('mensajeConteo').style.display = 'block';
+
+                const selectNit = document.getElementById('nit');
+                selectNit.innerHTML = '<option value="">Seleccione una empresa</option>';
+                
+                data.forEach(item => {
+                    let opcion = document.createElement('option');
+                    opcion.value = item.NIT;
+                    opcion.textContent = `${item.NIT} - ${item["Nombre Legal"] || 'Sin nombre'}`;
+                    selectNit.appendChild(opcion);
+                });
+
+            } catch (err) {
+                console.error('Error:', err);
+                document.getElementById('mensajeConteo').textContent = `⚠️ No se pudo cargar: ${err.message}`;
+                document.getElementById('mensajeConteo').style.display = 'block';
+            }
         }
-        document.getElementById('errorNit').style.display = 'none';
-        window.location.href = `MantenimientoSucursal.html?nit=${encodeURIComponent(nit)}`;
-    });
-</script>
+
+        window.addEventListener('load', mostrarSistema);
+
+        const form = document.getElementById('formIngreso');
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const nit = document.getElementById('nit').value;
+            if (!nit) {
+                document.getElementById('errorNit').style.display = 'block';
+                return;
+            }
+            document.getElementById('errorNit').style.display = 'none';
+            window.location.href = `MantenimientoSucursal.html?nit=${encodeURIComponent(nit)}`;
+        });
+    </script>
 </body>
 </html>
