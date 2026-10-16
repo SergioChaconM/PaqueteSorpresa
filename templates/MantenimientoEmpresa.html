@@ -454,18 +454,38 @@
             }
         }
         
-        async function eliminarEmpresa(nit) {
-            if (!confirm(`⚠️ ¿Eliminar empresa con NIT: ${nit}?\nSe eliminarán también sus alimentos asociados.`)) return;
-            
-            const { error: errRel } = await clienteSupabase.from("empresalimento").delete().eq('nit', nit);
-            if (errRel) return alert("Error al desvincular alimentos: " + errRel.message);
-            
-            const { error } = await clienteSupabase.from("Empresa").delete().eq('NIT', nit);
-            if (error) return alert("Error al eliminar: " + error.message);
-            
-            alert("✅ Eliminado correctamente");
-            cancelarFormulario();
-        }
+async function eliminarEmpresa(nit) {
+    if (!confirm(`⚠️ ¿Eliminar empresa con NIT: ${nit}?\nSe eliminarán también sus alimentos asociados y los paquetes relacionados.`)) return;
+    
+    try {
+        // ✅ PASO 1: Borrar paquetes de esta empresa
+        const { error: errPaquetes } = await clienteSupabase
+            .from("PaqueteOferton")
+            .delete()
+            .eq("nit", nit);
+        if (errPaquetes) throw errPaquetes;
+        
+        // ✅ PASO 2: Borrar relaciones con alimentos
+        const { error: errRel } = await clienteSupabase
+            .from("empresalimento")
+            .delete()
+            .eq("nit", nit);
+        if (errRel) throw errRel;
+        
+        // ✅ PASO 3: Borrar la empresa
+        const { error } = await clienteSupabase
+            .from("Empresa")
+            .delete()
+            .eq("NIT", nit);
+        if (error) throw error;
+        
+        alert("✅ Empresa eliminada junto con sus paquetes y alimentos asociados");
+        cancelarFormulario();
+        
+    } catch (err) {
+        alert("❌ Error al eliminar: " + err.message);
+    }
+}
         
         // ✅ CARGA DIRECTA DESDE SUPABASE — Ahora sí aparecerán tus 2 empresas
         async function cargarTablaEmpresa() {
@@ -640,22 +660,40 @@
             }
         }
         
-        async function quitarAlimento(secuencia) {
-            if (!confirm("⚠️ ¿Quitar este alimento de la empresa?")) return;
-            try {
-                const { error } = await clienteSupabase
-                    .from("empresalimento")
-                    .delete()
-                    .eq("nit", nitActual)
-                    .eq("secuencia", secuencia);
-                if (error) throw error;
-                alert("✅ Alimento desasociado");
-                await cargarAlimentosDisponibles();
-                await cargarAlimentosAsociados();
-            } catch (err) {
-                alert("Error al quitar: " + err.message);
-            }
+async function quitarAlimento(secuencia) {
+    if (!confirm("⚠️ ¿Quitar este alimento de la empresa?\nSe eliminarán también los paquetes que lo usan.")) return;
+    
+    try {
+        // ✅ PASO 1: Borrar primero los paquetes que dependen de este alimento
+        const { error: errPaquetes } = await clienteSupabase
+            .from("PaqueteOferton")
+            .delete()
+            .eq("nit", nitActual)
+            .eq("secuencia", secuencia);
+        
+        if (errPaquetes) {
+            console.warn("No se pudieron borrar paquetes:", errPaquetes);
+            throw new Error("No se pueden borrar paquetes dependientes: " + errPaquetes.message);
         }
+        
+        // ✅ PASO 2: Ahora sí quitar la relación empresa-alimento
+        const { error } = await clienteSupabase
+            .from("empresalimento")
+            .delete()
+            .eq("nit", nitActual)
+            .eq("secuencia", secuencia);
+            
+        if (error) throw error;
+        
+        alert("✅ Alimento desasociado correctamente (paquetes incluidos)");
+        await cargarAlimentosDisponibles();
+        await cargarAlimentosAsociados();
+        
+    } catch (err) {
+        alert("❌ Error: " + err.message);
+        console.error("Fallo al quitar:", err);
+    }
+}
         
         window.addEventListener('load', iniciarSesionAutomatica);
     </script>
