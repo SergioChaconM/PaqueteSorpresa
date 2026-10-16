@@ -455,35 +455,39 @@
         }
         
 async function eliminarEmpresa(nit) {
-    if (!confirm(`⚠️ ¿Eliminar empresa con NIT: ${nit}?\nSe eliminarán también sus alimentos asociados y los paquetes relacionados.`)) return;
+    if (!confirm(`⚠️ ¿Eliminar empresa con NIT: ${nit}?\n\n` +
+        "Primero debes eliminar manualmente los paquetes que pertenecen a esta empresa.")) return;
     
     try {
-        // ✅ PASO 1: Borrar paquetes de esta empresa
-        const { error: errPaquetes } = await clienteSupabase
-            .from("PaqueteOferton")
-            .delete()
-            .eq("nit", nit);
-        if (errPaquetes) throw errPaquetes;
-        
-        // ✅ PASO 2: Borrar relaciones con alimentos
+        // Solo borramos alimentos asociados
         const { error: errRel } = await clienteSupabase
             .from("empresalimento")
             .delete()
             .eq("nit", nit);
         if (errRel) throw errRel;
         
-        // ✅ PASO 3: Borrar la empresa
+        // Ahora borramos la empresa
         const { error } = await clienteSupabase
             .from("Empresa")
             .delete()
             .eq("NIT", nit);
-        if (error) throw error;
+        if (error) {
+            if (error.message.includes("foreign key constraint") || 
+                error.message.includes("PaqueteOferton")) {
+                throw new Error(
+                    "⚠️ No se puede eliminar la empresa.\n" +
+                    "Tiene paquetes creados. Elimina esos paquetes primero y vuelve a intentar."
+                );
+            }
+            throw error;
+        }
         
-        alert("✅ Empresa eliminada junto con sus paquetes y alimentos asociados");
+        alert("✅ Empresa eliminada correctamente");
         cancelarFormulario();
         
     } catch (err) {
-        alert("❌ Error al eliminar: " + err.message);
+        alert("❌ " + err.message);
+        console.error("Detalle del error:", err);
     }
 }
         
@@ -661,37 +665,36 @@ async function eliminarEmpresa(nit) {
         }
         
 async function quitarAlimento(secuencia) {
-    if (!confirm("⚠️ ¿Quitar este alimento de la empresa?\nSe eliminarán también los paquetes que lo usan.")) return;
+    if (!confirm("⚠️ ¿Quitar este alimento de la empresa?\nEsto desvincula el alimento de la empresa.")) return;
     
     try {
-        // ✅ PASO 1: Borrar primero los paquetes que dependen de este alimento
-        const { error: errPaquetes } = await clienteSupabase
-            .from("PaqueteOferton")
-            .delete()
-            .eq("nit", nitActual)
-            .eq("secuencia", secuencia);
-        
-        if (errPaquetes) {
-            console.warn("No se pudieron borrar paquetes:", errPaquetes);
-            throw new Error("No se pueden borrar paquetes dependientes: " + errPaquetes.message);
-        }
-        
-        // ✅ PASO 2: Ahora sí quitar la relación empresa-alimento
+        // 🔹 Primero solo intentamos borrar la relación directa
+        // No filtramos por 'nit' porque esa columna podría no existir en PaqueteOferton
         const { error } = await clienteSupabase
             .from("empresalimento")
             .delete()
             .eq("nit", nitActual)
             .eq("secuencia", secuencia);
             
-        if (error) throw error;
+        if (error) {
+            // Si sigue habiendo error de restricción, explicamos qué hacer
+            if (error.message.includes("foreign key constraint") || 
+                error.message.includes("PaqueteOferton")) {
+                throw new Error(
+                    "⚠️ No se puede desvincular porque hay paquetes que usan este alimento.\n" +
+                    "Primero debes eliminar esos paquetes desde la sección de Paquetes."
+                );
+            }
+            throw error;
+        }
         
-        alert("✅ Alimento desasociado correctamente (paquetes incluidos)");
+        alert("✅ Alimento desasociado correctamente");
         await cargarAlimentosDisponibles();
         await cargarAlimentosAsociados();
         
     } catch (err) {
-        alert("❌ Error: " + err.message);
-        console.error("Fallo al quitar:", err);
+        alert("❌ " + err.message);
+        console.error("Detalle del error:", err);
     }
 }
         
