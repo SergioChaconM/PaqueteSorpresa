@@ -455,39 +455,36 @@
         }
         
 async function eliminarEmpresa(nit) {
-    if (!confirm(`⚠️ ¿Eliminar empresa con NIT: ${nit}?\n\n` +
-        "Primero debes eliminar manualmente los paquetes que pertenecen a esta empresa.")) return;
+    if (!confirm(`⚠️ ¿Eliminar empresa con NIT: ${nit}?\nSe eliminarán también sus paquetes y alimentos asociados.`)) return;
     
     try {
-        // Solo borramos alimentos asociados
+        // ✅ PASO 1: Borrar todos los paquetes de esta empresa
+        const { error: errPaquetes } = await clienteSupabase
+            .from("PaqueteOferton")
+            .delete()
+            .eq("NIT", nit);    // ← Mayúscula NIT ✅
+        if (errPaquetes) throw errPaquetes;
+        
+        // ✅ PASO 2: Borrar relaciones con alimentos
         const { error: errRel } = await clienteSupabase
             .from("empresalimento")
             .delete()
             .eq("nit", nit);
         if (errRel) throw errRel;
         
-        // Ahora borramos la empresa
+        // ✅ PASO 3: Borrar la empresa
         const { error } = await clienteSupabase
             .from("Empresa")
             .delete()
             .eq("NIT", nit);
-        if (error) {
-            if (error.message.includes("foreign key constraint") || 
-                error.message.includes("PaqueteOferton")) {
-                throw new Error(
-                    "⚠️ No se puede eliminar la empresa.\n" +
-                    "Tiene paquetes creados. Elimina esos paquetes primero y vuelve a intentar."
-                );
-            }
-            throw error;
-        }
+        if (error) throw error;
         
-        alert("✅ Empresa eliminada correctamente");
+        alert("✅ Empresa eliminada junto con sus paquetes y alimentos");
         cancelarFormulario();
         
     } catch (err) {
-        alert("❌ " + err.message);
-        console.error("Detalle del error:", err);
+        alert("❌ Error: " + err.message);
+        console.error("Detalle completo:", err);
     }
 }
         
@@ -665,36 +662,38 @@ async function eliminarEmpresa(nit) {
         }
         
 async function quitarAlimento(secuencia) {
-    if (!confirm("⚠️ ¿Quitar este alimento de la empresa?\nEsto desvincula el alimento de la empresa.")) return;
+    if (!confirm("⚠️ ¿Quitar este alimento de la empresa?\nSe eliminarán también los paquetes que lo usan.")) return;
     
     try {
-        // 🔹 Primero solo intentamos borrar la relación directa
-        // No filtramos por 'nit' porque esa columna podría no existir en PaqueteOferton
+        // ✅ PASO 1: Borrar paquetes que usan este alimento en esta empresa
+        // Usamos NIT con mayúscula tal cual está en la tabla
+        const { error: errPaquetes } = await clienteSupabase
+            .from("PaqueteOferton")
+            .delete()
+            .eq("NIT", nitActual)      // ← Mayúscula NIT ✅
+            .eq("secuencia", secuencia);
+            
+        if (errPaquetes) {
+            console.error("Error borrando paquetes:", errPaquetes);
+            throw new Error("No se pudieron eliminar los paquetes: " + errPaquetes.message);
+        }
+        
+        // ✅ PASO 2: Ahora sí desvincular el alimento de la empresa
         const { error } = await clienteSupabase
             .from("empresalimento")
             .delete()
             .eq("nit", nitActual)
             .eq("secuencia", secuencia);
             
-        if (error) {
-            // Si sigue habiendo error de restricción, explicamos qué hacer
-            if (error.message.includes("foreign key constraint") || 
-                error.message.includes("PaqueteOferton")) {
-                throw new Error(
-                    "⚠️ No se puede desvincular porque hay paquetes que usan este alimento.\n" +
-                    "Primero debes eliminar esos paquetes desde la sección de Paquetes."
-                );
-            }
-            throw error;
-        }
+        if (error) throw error;
         
-        alert("✅ Alimento desasociado correctamente");
+        alert("✅ Alimento desasociado correctamente (paquetes incluidos)");
         await cargarAlimentosDisponibles();
         await cargarAlimentosAsociados();
         
     } catch (err) {
-        alert("❌ " + err.message);
-        console.error("Detalle del error:", err);
+        alert("❌ Error: " + err.message);
+        console.error("Detalle completo:", err);
     }
 }
         
