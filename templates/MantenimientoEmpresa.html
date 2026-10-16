@@ -203,7 +203,7 @@
         
         <div id="datos" style="display: none;">
             <div class="encabezado-pagina">
-                <button type="button" class="volver" onclick="window.location.href='index.html'">← Volver</button>
+                <button type="button" class="volver" onclick="window.location.href='index.html?v=' + new Date().getTime()">← Volver</button>
                 <h2>Gestión de Empresas</h2>
             </div>
             
@@ -486,73 +486,40 @@
         }
 
         // ✅ === FUNCIÓN MODIFICADA: Ahora lee desde tu Backend en Render ===
-        async function cargarTablaEmpresa() {
-            const tablaDiv = document.getElementById('tablaEmpresa');
-            const msgDiv = document.getElementById('mensajeDatos');
-            msgDiv.innerHTML = '<p class="info">Cargando datos desde el servidor...</p>';
-            tablaDiv.style.opacity = '0.5';
-
-            try {
-                // 📞 Llamada a tu API en Render en lugar de directo a Supabase
-
-		const respuesta = await fetch(`${API_BASE}/public/empresas`);
-                const resultado = await respuesta.json();
-                const data = resultado.datos;
-
-                if (!data || data.length === 0) {
-                    msgDiv.innerHTML = `<p class="info">No hay empresas registradas</p>`;
-                    tablaDiv.innerHTML = "";
-                    return;
-                }
-
-                msgDiv.innerHTML = `<p class="exito">Total: ${data.length} empresas</p>`;
-                let html = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>NIT</th>
-                            <th>Nombre Legal</th>
-                            <th>Nombre Comercial</th>
-                            <th>Fecha Registro</th>
-                            <th>Contacto</th>
-                            <th>Correo Representante</th>
-                            <th>Banco</th>
-                            <th>Tipo Cuenta</th>
-                            <th>N° Cuenta</th>
-                            <th>Vigente</th>
-                            <th class="acciones">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-                data.forEach(emp => {
-                    html += `
-                    <tr>
-                        <td>${emp.NIT}</td>
-                        <td>${emp["Nombre Legal"]}</td>
-                        <td>${emp["Nombre Comercial"] || '-'}</td>
-                        <td>${emp.Registro}</td>
-                        <td>${emp["Contacto Principal"] || '-'}</td>
-                        <td>${emp.correorepresentante || '-'}</td>
-                        <td>${emp.banco || '-'}</td>
-                        <td>${emp.tipocta || '-'}</td>
-                        <td>${emp.cuenta || '-'}</td>
-                        <td>${emp.Vigente ? '✅ Sí' : '❌ No'}</td>
-                        <td class="acciones">
-                            <button class="editar" onclick="abrirFormularioEditar('${emp.NIT}')">Editar</button>
-                            <button class="eliminar" onclick="eliminarEmpresa('${emp.NIT}')">X</button>
-                        </td>
-                    </tr>`;
-                });
-                html += `</tbody></table>`;
-                tablaDiv.innerHTML = html;
-            } catch (err) {
-                msgDiv.innerHTML = `<p class="error">Error: ${err.message}</p>`;
-                console.error("Detalle del error:", err);
-            } finally {
-                tablaDiv.style.opacity = '1';
-            }
+async function cargarTablaEmpresa() {
+    const tablaDiv = document.getElementById('tablaEmpresa');
+    const msgDiv = document.getElementById('mensajeDatos');
+    msgDiv.innerHTML = '<p class="info">Cargando datos desde el servidor...</p>';
+    tablaDiv.style.opacity = '0.5';
+    try {
+        const respuesta = await fetch(`${API_BASE}/public/empresas`);
+        
+        // ✅ Depuración
+        console.log("Estado de respuesta:", respuesta.status);
+        console.log("Cabeceras:", respuesta.headers);
+        
+        const resultado = await respuesta.json();
+        
+        // ✅ Ver qué llega exactamente
+        console.log("Respuesta completa del servidor:", resultado);
+        
+        const data = resultado.datos;
+        
+        if (!data || data.length === 0) {
+            msgDiv.innerHTML = `<p class="info">No hay empresas registradas</p>`;
+            tablaDiv.innerHTML = "";
+            return;
         }
-
+        
+        msgDiv.innerHTML = `<p class="exito">Total: ${data.length} empresas</p>`;
+        // ... el resto del código sigue igual
+    } catch (err) {
+        msgDiv.innerHTML = `<p class="error">Error: ${err.message}</p>`;
+        console.error("Detalle del error:", err);
+    } finally {
+        tablaDiv.style.opacity = '1';
+    }
+}
         async function cargarAlimentosDisponibles() {
             try {
                 const { data: todos, error: errTodos } = await clienteSupabase
