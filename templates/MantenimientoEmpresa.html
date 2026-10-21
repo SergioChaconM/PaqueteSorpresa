@@ -283,9 +283,14 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+import os
+from supabase import create_client
         // Conexión a Supabase
-        const supabaseUrl = 'https://swwodfpirqvwliuiswup.supabase.co';
-        const supabaseKey = "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
+        const supabaseUrl = os.environ["SUPABASE_URL"]
+// 'https://swwodfpirqvwliuiswup.supabase.co';
+	SUPABASE_ANON_KEY = os.environ["SUPABASE_ANON_KEY"]
+        const supabaseKey = os.environ["SUPABASE_SERVICE_KEY"]
+// "sb_publishable_FKCzw_BciB92cN3VNFLevA_rz49uq-q";
         const clienteSupabase = supabase.createClient(supabaseUrl, supabaseKey, {
             auth: { storage: localStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
         });
